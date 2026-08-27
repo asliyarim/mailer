@@ -1,0 +1,12 @@
+target
+frontend/node_modules
+frontend/dist
+.git
+.idea
+*.log
+# Sirlar build baglamina HIC girmemeli: .env icinde APP_JWT_SECRET ve
+# veritabani parolalari var. Backend Dockerfile'i zaten sadece
+# mvnw/pom.xml/.mvn/src kopyaliyor, ama acikca disarida birakiliyor.
+.env
+.env.*
+!.env.example

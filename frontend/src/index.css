@@ -1,0 +1,48 @@
+/* Uygulama kabugunun stilleri. DIKKAT: burada yazilan hicbir sey mail
+   HTML'ini etkilemez - mail sunucuda uretilir ve iframe icinde izole calisir
+   (bkz. docs/BRIEF.md, Mimari Kural 1). Mailin gorunumunu degistirmek icin
+   backend'deki tema/sablon siniflari duzenlenir. */
+
+:root {
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  color: #1f2933;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f4f6f8;
+}
+
+/* Iki panelli editor duzeni: solda form, sagda onizleme. */
+.editor-layout {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(780px, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 16px;
+}
+
+.editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Numarali kartlar - sol paneldeki her adim bir kart. */
+.card {
+  background: #fff;
+  border: 1px solid #d9e0e7;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.card__baslik {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}

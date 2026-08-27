@@ -1,0 +1,15 @@
+# Satir sonlarini git yonetsin.
+* text=auto
+
+# LF ZORUNLU olanlar: bunlar ya bash tarafindan calistiriliyor ya da Linux
+# konteynerine mount ediliyor. CRLF ile klonlanirlarsa Windows'ta
+# "$'\r': command not found" gibi anlasilmaz hatalar verir.
+/mvnw       text eol=lf
+*.sh        text eol=lf
+*.conf      text eol=lf
+*.sql       text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+
+# Windows toplu is dosyasi CRLF ister.
+*.cmd       text eol=crlf

@@ -1,0 +1,75 @@
+# Aksa Mailer'in kendi yigini: veritabani + backend + frontend.
+#
+# Bu dosya TEK BASINA uygulamayi ayaga kaldirir ama Odyssey kabugu olmadan
+# oturum acilamaz (kullanicilar odyssey-auth'ta). Gunluk kullanim icin
+# kabukla birlikte calistir:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.odyssey.yml up -d
+#
+# Capacity Planner'a HICBIR bagimlilik yok - o repo klonlanmasa da calisir.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aksa-mailer-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-aksa_mailer}
+      POSTGRES_USER: ${DB_USERNAME:-aksa_mailer}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-aksa_mailer}
+    ports:
+      # Disariya 5433'ten aciliyor: 5432'de baska bir Postgres calisiyorsa
+      # (orn. Capacity Planner'inki) cakismasin. Konteynerler arasi iletisim
+      # her zaman 5432 uzerinden.
+      - "${DB_PORT_YAYIN:-5433}:5432"
+    volumes:
+      - aksa-mailer-postgres-data:/var/lib/postgresql/data
+      # odyssey_auth veritabanini yaratir. Yalnizca volume bosken calisir.
+      - ./local/init-db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-aksa_mailer} -d ${DB_NAME:-aksa_mailer}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailer-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aksa-mailer-backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-aksa_mailer}
+      DB_USERNAME: ${DB_USERNAME:-aksa_mailer}
+      DB_PASSWORD: ${DB_PASSWORD:-aksa_mailer}
+      # odyssey-auth ile AYNI olmali - token'i o uretiyor, biz doğruluyoruz.
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?APP_JWT_SECRET .env icinde tanimlanmali}
+    ports:
+      - "${BACKEND_PORT:-8082}:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mailer-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8082}
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/}
+    container_name: aksa-mailer-frontend
+    restart: unless-stopped
+    environment:
+      # frontend/nginx.conf'taki sablon degiskenleri.
+      BACKEND_INTERNAL_URL: http://mailer-backend:8082
+      # Oturum uclari bizim backend'e DEGIL odyssey-auth'a gitmeli.
+      AUTH_INTERNAL_URL: ${AUTH_INTERNAL_URL:-odyssey-auth:8081}
+    ports:
+      - "${FRONTEND_PORT:-5174}:80"
+    depends_on:
+      - mailer-backend
+
+volumes:
+  aksa-mailer-postgres-data:
