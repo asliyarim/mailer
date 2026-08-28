@@ -32,42 +32,45 @@ export default function SutunSecimi({ templateType, columns, onChange }) {
   }
 
   return (
-    <div style={{ margin: '10px 0 12px' }}>
-      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+    <div style={{ marginBottom: 14 }}>
+      <div className="alan__etiket" style={{ marginBottom: 7 }}>
         Mailde gösterilecek alanlar
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
-        {secilebilir.map((alan) => (
-          <label key={alan} style={{ display: 'flex', gap: 5, alignItems: 'center', fontSize: 13 }}>
-            <input
-              type="checkbox"
-              checked={secili.includes(alan)}
-              onChange={(e) => degistir(alan, e.target.checked)}
-            />
-            <span>{ROW_FIELD_LABELS[alan] ?? alan}</span>
-          </label>
-        ))}
+      <div className="secim-izgara">
+        {secilebilir.map((alan) => {
+          const acik = secili.includes(alan)
+          return (
+            <label key={alan} className={acik ? 'secim secim--acik' : 'secim'}>
+              <input
+                type="checkbox"
+                checked={acik}
+                onChange={(e) => degistir(alan, e.target.checked)}
+              />
+              <span>{ROW_FIELD_LABELS[alan] ?? alan}</span>
+            </label>
+          )
+        })}
       </div>
 
       {cizilen > ONERILEN_UST_SINIR && (
-        <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#8a5a09' }}>
+        <div className="uyari uyari--dikkat" style={{ marginTop: 8 }}>
           Tabloda {cizilen} sütun çizilecek. Mail gövdesi 760 piksel sabit —
           {' '}{ONERILEN_UST_SINIR}'dan fazlası Outlook'ta okunmakta zorlanır.
-        </p>
+        </div>
       )}
 
       {sektoreGoreGruplu && (
-        <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#6d8296' }}>
+        <p className="alan__ipucu" style={{ marginTop: 8 }}>
           Sektör seçili: tablo sektöre göre gruplanır. Grup başlığı zaten sektörü
           söylediği için ayrı bir sütun olarak çizilmez.
         </p>
       )}
 
       {secili.length === 0 && (
-        <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#9c3226' }}>
+        <div className="uyari uyari--hata" style={{ marginTop: 8 }}>
           Hiç sütun seçili değil — bu bölüm mailde çizilmez.
-        </p>
+        </div>
       )}
     </div>
   )

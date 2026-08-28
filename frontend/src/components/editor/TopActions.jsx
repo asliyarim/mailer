@@ -3,12 +3,22 @@
 // .eml dosyasi SUNUCUDAN indirilir (GET .../export.eml) - istemcide mail
 // dosyasi kurulmaz. Gorseller cid: ile mailin icine gomulu geldigi icin bu
 // tek guvenilir yol (docs/BRIEF.md, Kural 3).
+//
+// Yazdirma da AYNI HTML'i kullanir: onizleme panelinden gelen, sunucunun
+// urettigi metin. Yazdirmak icin ikinci bir HTML kurulmaz (Kural 1).
 
 import { useState } from 'react'
 import { fetchEml, logDownload } from '../../lib/apiClient.js'
 import Button from '../shared/Button.jsx'
 
-export default function TopActions({ belge, kaydediliyor, kaydedilmemis, onKaydet, onListe }) {
+export default function TopActions({
+  belge,
+  kaydediliyor,
+  kaydedilmemis,
+  onizlemeHtml,
+  onKaydet,
+  onListe,
+}) {
   const [indiriliyor, setIndiriliyor] = useState(false)
   const [hata, setHata] = useState(null)
 
@@ -17,11 +27,14 @@ export default function TopActions({ belge, kaydediliyor, kaydedilmemis, onKayde
     setIndiriliyor(true)
     let url
     try {
-      const blob = await fetchEml(belge.id)
+      const { blob, dosyaAdi } = await fetchEml(belge.id)
       url = URL.createObjectURL(blob)
       const baglanti = document.createElement('a')
       baglanti.href = url
-      baglanti.download = `${belge.title || 'sprint-maili'}.eml`
+      // Ad SUNUCUDAN gelir: orada bilerek ASCII'ye indirgeniyor, cunku bazi
+      // istemciler UTF-8 dosya adini bozuyor. Buradan "belge.title" yazmak
+      // o karari bosa cikarirdi. Baslik okunamazsa yedege duseriz.
+      baglanti.download = dosyaAdi ?? `${belge.title || 'sprint-maili'}.eml`
       document.body.appendChild(baglanti)
       baglanti.click()
       baglanti.remove()
@@ -41,18 +54,59 @@ export default function TopActions({ belge, kaydediliyor, kaydedilmemis, onKayde
     }
   }
 
+  /**
+   * PDF / Yazdır.
+   *
+   * Onizleme iframe'inin uzerinden print() CAGRILAMAZ: iframe sandbox=""
+   * ile calisiyor, yani script yok ve ayni kaynak erisimi yok - bu bilerek
+   * boyle, onizlenen HTML uygulamanin oturumuna erisemesin diye.
+   * O yuzden ayni HTML yeni bir pencereye yazilip orada yazdiriliyor.
+   *
+   * Onizleme kaydedilmemis icerigi de gosterdigi icin cikti EKRANDA GORULEN
+   * mailin aynisidir - .eml'den farkli olarak sunucudaki kayitli surumu
+   * degil, o anki hali yazdirir.
+   */
+  function yazdir() {
+    setHata(null)
+    if (!onizlemeHtml) {
+      setHata('Önizleme henüz hazır değil. Birkaç saniye sonra tekrar deneyin.')
+      return
+    }
+
+    const pencere = window.open('', '_blank', 'width=900,height=1000')
+    if (!pencere) {
+      setHata('Tarayıcı yeni pencereyi engelledi. Bu site için açılır pencerelere izin verin.')
+      return
+    }
+
+    pencere.document.write(onizlemeHtml)
+    pencere.document.close()
+    pencere.focus()
+
+    // Gorseller cozulmeden print() cagirilirsa cikti bos kutularla gelir.
+    // Yukleme bittiyse hemen, bitmediyse load olayinda yazdir.
+    function yazdirmayiBaslat() {
+      pencere.print()
+    }
+    if (pencere.document.readyState === 'complete') yazdirmayiBaslat()
+    else pencere.addEventListener('load', yazdirmayiBaslat, { once: true })
+
+    // Pencereyi kapatmiyoruz: kullanici yazdirmayi iptal edip tekrar
+    // deneyebilir ya da PDF olarak kaydetme yerini secebilir.
+    logDownload(belge.id, 'PDF').catch(() => {
+      // olcum kaydi; kullaniciyi ilgilendirmiyor
+    })
+  }
+
   return (
-    <div className="card">
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Button varyant="sessiz" onClick={onListe}>
+    <div className="arac-serit">
+      <div className="arac-serit__satir">
+        <Button varyant="sessiz" boyut="kucuk" onClick={onListe}>
           ← Belgelerim
         </Button>
 
-        <span style={{ flex: 1, minWidth: 120, fontWeight: 600 }}>
+        <span className="arac-serit__ad" title={belge?.title}>
           {belge?.title ?? 'Yeni mail'}
-          {kaydedilmemis && (
-            <span style={{ fontWeight: 400, color: '#8a5a09' }}> · kaydedilmemiş değişiklik</span>
-          )}
         </span>
 
         <Button varyant="birincil" onClick={onKaydet} disabled={kaydediliyor || !belge}>
@@ -61,21 +115,35 @@ export default function TopActions({ belge, kaydediliyor, kaydedilmemis, onKayde
 
         {/* Indirilen .eml SUNUCUDAKI kayitli surumden uretilir - ekrandaki
             kaydedilmemis degisiklikleri icermez. Kullaniciyi uyariyoruz. */}
-        <Button onClick={emlIndir} disabled={!belge || indiriliyor || kaydedilmemis}>
+        <Button
+          onClick={emlIndir}
+          disabled={!belge || indiriliyor || kaydedilmemis}
+          baslik={
+            kaydedilmemis
+              ? 'Önce kaydedin: mail dosyası sunucudaki kayıtlı sürümden üretilir.'
+              : undefined
+          }
+        >
           {indiriliyor ? 'Hazırlanıyor…' : 'Outlook Maili İndir'}
         </Button>
 
-        {/* TODO (Sprint 2): PDF / Yazdır - önizleme iframe'inin print'i. */}
-        <Button disabled>PDF / Yazdır</Button>
+        <Button onClick={yazdir} disabled={!onizlemeHtml}>
+          PDF / Yazdır
+        </Button>
       </div>
 
       {kaydedilmemis && (
-        <p style={{ margin: '8px 0 0', fontSize: 12.5, color: '#8a5a09' }}>
-          İndirmeden önce kaydedin — mail dosyası sunucudaki kayıtlı sürümden üretilir.
+        <p className="alan__ipucu" style={{ marginTop: 8 }}>
+          Kaydedilmemiş değişiklikleriniz var. Önizleme ve yazdırma bunları gösterir;
+          Outlook maili ise kayıtlı sürümden üretilir.
         </p>
       )}
 
-      {hata && <p style={{ margin: '8px 0 0', color: '#9c3226' }}>{hata}</p>}
+      {hata && (
+        <div className="uyari uyari--hata" style={{ marginTop: 8 }}>
+          {hata}
+        </div>
+      )}
     </div>
   )
 }

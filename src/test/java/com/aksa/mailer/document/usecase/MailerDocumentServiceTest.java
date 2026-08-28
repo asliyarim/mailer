@@ -2,6 +2,7 @@ package com.aksa.mailer.document.usecase;
 
 import com.aksa.mailer.common.domain.NotFoundException;
 import com.aksa.mailer.common.domain.VersionConflictException;
+import com.aksa.mailer.document.domain.DownloadFormat;
 import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.MailSection;
 import com.aksa.mailer.document.domain.MailerDocument;
@@ -10,6 +11,7 @@ import com.aksa.mailer.document.domain.Tone;
 import com.aksa.mailer.document.port.in.ManageMailerDocumentsUseCase;
 import com.aksa.mailer.document.port.out.MailerDocumentRepository;
 import com.aksa.mailer.document.port.out.MailerDocumentVersionRepository;
+import com.aksa.mailer.document.port.out.MailerDownloadLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,13 +38,15 @@ class MailerDocumentServiceTest {
 
     private SahteDocumentRepo documentRepo;
     private SahteVersionRepo versionRepo;
+    private SahteIndirmeRepo indirmeRepo;
     private MailerDocumentService service;
 
     @BeforeEach
     void kurulum() {
         documentRepo = new SahteDocumentRepo();
         versionRepo = new SahteVersionRepo();
-        service = new MailerDocumentService(documentRepo, versionRepo);
+        indirmeRepo = new SahteIndirmeRepo();
+        service = new MailerDocumentService(documentRepo, versionRepo, indirmeRepo);
     }
 
     private MailerDocument yeniKapanis() {
@@ -161,7 +165,43 @@ class MailerDocumentServiceTest {
         assertThat(saklananSurec).isEqualTo(TURKCE);
     }
 
+    @Test
+    @DisplayName("indirme kaydı belgenin takımıyla yazılır")
+    void indirmeKaydi() {
+        MailerDocument taslak = yeniKapanis();
+
+        service.indirmeKaydet(taslak.id(), DownloadFormat.EML, SICIL);
+
+        assertThat(indirmeRepo.kayitlar).hasSize(1);
+        SahteIndirmeRepo.Kayit k = indirmeRepo.kayitlar.get(0);
+        // teamId istemciden DEGIL belgeden gelir - olcum carpitilamasin.
+        assertThat(k.teamId()).isEqualTo(1L);
+        assertThat(k.format()).isEqualTo(DownloadFormat.EML);
+        assertThat(k.sicil()).isEqualTo(SICIL);
+    }
+
+    @Test
+    @DisplayName("olmayan belgenin indirmesi kaydedilmez")
+    void olmayanBelgeIndirmesi() {
+        assertThatThrownBy(() -> service.indirmeKaydet(4242L, DownloadFormat.EML, SICIL))
+                .isInstanceOf(NotFoundException.class);
+
+        assertThat(indirmeRepo.kayitlar).isEmpty();
+    }
+
     // --- sahte portlar -----------------------------------------------------
+
+    private static class SahteIndirmeRepo implements MailerDownloadLogRepository {
+        record Kayit(Long documentId, Long teamId, DownloadFormat format, String sicil) {
+        }
+
+        private final List<Kayit> kayitlar = new ArrayList<>();
+
+        @Override
+        public void ekle(Long documentId, Long teamId, DownloadFormat format, String sicil) {
+            kayitlar.add(new Kayit(documentId, teamId, format, sicil));
+        }
+    }
 
     private static class SahteDocumentRepo implements MailerDocumentRepository {
         private final Map<Long, MailerDocument> kayitlar = new HashMap<>();

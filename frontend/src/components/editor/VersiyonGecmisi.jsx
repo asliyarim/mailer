@@ -46,39 +46,47 @@ export default function VersiyonGecmisi({ acik, documentId, guncelSurum, onKapat
 
   return (
     <Modal acik={acik} baslik="Sürüm geçmişi" onKapat={onKapat}>
-      {hata && <p style={{ color: '#9c3226' }}>{hata}</p>}
+      {hata && <div className="uyari uyari--hata">{hata}</div>}
 
-      {surumler.length === 0 && !hata && <p>Henüz kayıtlı sürüm yok.</p>}
+      {surumler.length === 0 && !hata && (
+        <p className="sessiz-metin">Henüz kayıtlı sürüm yok.</p>
+      )}
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-        <tbody>
-          {surumler.map((s) => (
-            <tr key={s.version} style={{ borderTop: '1px solid #e2e9ef' }}>
-              <td style={{ padding: '8px 0', width: 70 }}>
-                <strong>v{s.version}</strong>
-                {s.version === guncelSurum && (
-                  <span style={{ color: '#6d8296', fontSize: 12 }}> · güncel</span>
-                )}
-              </td>
-              <td style={{ padding: '8px 0', color: '#3f5265' }}>{s.createdBy}</td>
-              <td style={{ padding: '8px 0', color: '#6d8296' }}>{tarihBicimle(s.createdAt)}</td>
-              <td style={{ padding: '8px 0', textAlign: 'right' }}>
-                {s.version !== guncelSurum && (
-                  <Button onClick={() => geriAl(s.version)} disabled={islemdeki !== null}>
-                    {islemdeki === s.version ? 'Alınıyor…' : 'Bu sürüme dön'}
-                  </Button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {surumler.length > 0 && (
+        <table className="liste-tablo">
+          <tbody>
+            {surumler.map((s) => (
+              <tr key={s.version}>
+                <td className="sayi" style={{ width: 92 }}>
+                  <strong>v{s.version}</strong>
+                  {s.version === guncelSurum && (
+                    <span className="sessiz-metin"> · güncel</span>
+                  )}
+                </td>
+                <td>{s.createdBy}</td>
+                <td className="sessiz-metin">{tarihBicimle(s.createdAt)}</td>
+                <td style={{ textAlign: 'right' }}>
+                  {s.version !== guncelSurum && (
+                    <Button
+                      boyut="kucuk"
+                      onClick={() => geriAl(s.version)}
+                      disabled={islemdeki !== null}
+                    >
+                      {islemdeki === s.version ? 'Alınıyor…' : 'Bu sürüme dön'}
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
-      <p style={{ marginTop: 14, fontSize: 12.5, color: '#6d8296' }}>
+      <p className="alan__ipucu" style={{ marginTop: 14 }}>
         Geri alma geçmişi silmez; eski içerik yeni bir sürüm olarak kaydedilir.
       </p>
 
-      <div style={{ marginTop: 12, textAlign: 'right' }}>
+      <div style={{ marginTop: 14, textAlign: 'right' }}>
         <Button varyant="sessiz" onClick={onKapat}>
           Kapat
         </Button>

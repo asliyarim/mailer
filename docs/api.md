@@ -50,6 +50,28 @@ Tüm hatalar aynı şekli taşır:
 Frontend `message` alanını kullanıcıya gösterir. Alan adı değişirse
 `apiClient.js` de değişmeli.
 
+#### İki istisna: bu iki yanıtta JSON gövde yoktur
+
+Denetlendi — geri kalan her hata yukarıdaki gövdeyi taşır.
+
+| Durum | Gövde | Neden |
+|---|---|---|
+| `401` | **boş** | Spring Security'nin giriş noktası; oturum yoksa açıklayacak bir şey yok |
+| `403` CORS | `Invalid CORS request` (düz metin) | Spring'in CORS işlemcisi yanıtı kendisi yazar |
+
+İkisi de çerçeveden geliyor ve **bilerek değiştirilmedi**: CORS reddi yalnızca
+gerçekten yabancı bir origin'den gelen isteklerde oluşur, orada da yanıtın
+biçimi kimseye yardımcı olmaz. Özel bir `CorsProcessor` yazmak, kazancına
+değmeyecek bir katman olurdu.
+
+**İstemci tarafı için sonuç:** gövde JSON değilse `message` okunamaz. O durumda
+kendi metnini göster ama sunucunun ham sözünü de taşı — yoksa yanlış teşhis
+edersin. Yaşandı: kabuk portu CORS listesinde olmadığı için yazma işlemleri
+düşüyordu, arayüz "yetkiniz yok" diyordu, gerçek sebep `Invalid CORS request`'ti.
+
+CORS izin listesi `.env`'deki portlardan türetilir
+(`APP_CORS_ALLOWED_ORIGINS`, bkz. `docker-compose.yml`) — elle yazılmaz.
+
 | Kod | Anlamı |
 |---|---|
 | `400` | Geçersiz istek — şema hatası, zorunlu alan boş |
@@ -57,6 +79,14 @@ Frontend `message` alanını kullanıcıya gösterir. Alan adı değişirse
 | `403` | CSRF doğrulaması başarısız, ya da bu takıma yetkin yok |
 | `404` | Kayıt yok |
 | `409` | Sürüm çakışması (bkz. `PUT /documents/{id}`) |
+
+### `status` alanı kullanılmıyor
+
+Yanıtlarda `"status": "DRAFT"` görürsünüz. Şema `DRAFT | FINAL` tutuyor ama
+**`FINAL`'e geçiren bir uç yok** — her belge `DRAFT` doğar ve öyle kalır.
+
+Bilerek böyle: onay/gönderim akışı ne yol haritasında ne de talepte var.
+İleride istenirse `POST /documents/{id}/finalize` yeterli; şema hazır.
 
 ---
 
@@ -241,8 +271,20 @@ eder.
 
 ```
 Content-Type: message/rfc822
-Content-Disposition: attachment; filename="sprint-kapanis.eml"
+Content-Disposition: attachment; filename="Agustos_2026_Sprint_Kapanisi.eml"; filename*=UTF-8''Agustos_2026_Sprint_Kapanisi.eml
 ```
+
+**Dosya adını istemci `Content-Disposition`'dan okur, `title`'dan değil.**
+
+Sunucu adı Türkçe karakterlerden ve boşluklardan arındırıp ASCII'ye indirger:
+bazı istemciler UTF-8 dosya adını yanlış çözüp adı bozuyor. İstemci `title`'ı
+kullanıp adı kendisi kurarsa bu indirgeme boşa çıkar ve dosya kimi Windows
+kurulumlarında bozuk adla iner.
+
+Başlık iki biçimi birden taşır (`filename` ve `filename*`); istemci ikisinden
+birini okuyabilir. Başlık okunamıyorsa — farklı origin'de tarayıcı gizler —
+istemci `title`'a düşebilir, ama aynı origin'de çalıştığımız için normalde
+gizlenmez.
 
 Gövde: `multipart/related` mail. Görseller `cid:` ile içine gömülü, konu
 başlığı UTF-8 kodlu, `X-Unsent: 1` başlığı var (Outlook çift tıklayınca

@@ -1,8 +1,7 @@
 package com.aksa.mailer.render.domain;
 
 import com.aksa.mailer.common.domain.NotFoundException;
-import com.aksa.mailer.render.theme.IsZekasiTheme;
-import com.aksa.mailer.render.theme.RpaTheme;
+import com.aksa.mailer.render.theme.Temalar;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,8 +18,7 @@ public final class ThemeRegistry {
     private static final Map<String, MailTheme> TEMALAR = new LinkedHashMap<>();
 
     static {
-        kaydet(RpaTheme.tema());
-        kaydet(IsZekasiTheme.tema());
+        Temalar.hepsi().forEach(ThemeRegistry::kaydet);
     }
 
     private ThemeRegistry() {

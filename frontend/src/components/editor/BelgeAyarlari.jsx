@@ -16,45 +16,45 @@ export default function BelgeAyarlari({ belge, onDegisti, onVersiyonlar }) {
 
   return (
     <section className="card">
-      <h2 className="card__baslik">1 · Belge ayarları</h2>
+      <h2 className="card__baslik">
+        <span className="card__no">1</span>
+        Belge ayarları
+        <span className="card__sag">
+          <Button varyant="sessiz" boyut="kucuk" onClick={onVersiyonlar}>
+            Sürüm geçmişi
+          </Button>
+        </span>
+      </h2>
 
-      <div style={{ display: 'grid', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 14 }}>
-          <span>
-            <strong>Mail tipi:</strong> {TEMPLATE_LABELS[belge.templateType] ?? belge.templateType}
-          </span>
-          <span>
-            <strong>Tema:</strong> {belge.themeKey}
-          </span>
-          <span>
-            <strong>Sürüm:</strong> {belge.currentVersion}
-          </span>
-        </div>
+      {/* Değiştirilemeyen üç bilgi etiket olarak duruyor: form alanı gibi
+          görünürlerse kullanıcı düzenlemeyi dener. */}
+      <div className="satir-arasi" style={{ marginBottom: 14 }}>
+        <span className="etiket">{TEMPLATE_LABELS[belge.templateType] ?? belge.templateType}</span>
+        <span className="etiket etiket--notr">Tema: {belge.themeKey}</span>
+        <span className="etiket etiket--notr sayi">v{belge.currentVersion}</span>
+      </div>
 
-        <label style={{ display: 'grid', gap: 4 }}>
-          <span>Başlık <small style={{ color: '#6d8296' }}>(listede görünen ad)</small></span>
+      <div className="izgara">
+        <label className="alan">
+          <span className="alan__etiket">Başlık</span>
           <input
             type="text"
             value={belge.title ?? ''}
             onChange={(e) => onDegisti({ title: e.target.value })}
           />
+          <span className="alan__ipucu">Listede görünen ad ve indirilen dosyanın adı.</span>
         </label>
 
-        <label style={{ display: 'grid', gap: 4 }}>
-          <span>Konu <small style={{ color: '#6d8296' }}>(Outlook'ta görünen konu satırı)</small></span>
+        <label className="alan">
+          <span className="alan__etiket">Mail konusu</span>
           <input
             type="text"
             value={belge.subject ?? ''}
             placeholder="RPA Sprint Kapanış Bilgilendirme"
             onChange={(e) => onDegisti({ subject: e.target.value })}
           />
+          <span className="alan__ipucu">Outlook'ta konu satırında görünür.</span>
         </label>
-
-        <div>
-          <Button varyant="sessiz" onClick={onVersiyonlar}>
-            Sürüm geçmişi
-          </Button>
-        </div>
       </div>
     </section>
   )

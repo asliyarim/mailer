@@ -11,6 +11,20 @@ import { createDocument, fetchTeams } from '../../lib/apiClient.js'
 import { TEMPLATE_LABELS, TEMPLATE_TYPES } from '../../lib/mailContent.js'
 import Button from '../shared/Button.jsx'
 
+// Tip kartlarının açıklamaları - kullanıcı neyi seçtiğini bilerek seçsin,
+// çünkü tip sonradan değiştirilemiyor.
+const TIP_ACIKLAMALARI = {
+  KAPANIS: 'Biten sprintin analiz ve geliştirme çalışmaları, sektöre göre gruplu tablolar.',
+  PLANLAMA: 'Gelecek sprintin konuları: konu anahtarı, özet, durum, beklenen işler.',
+  YONETICI_OZETI: 'Sayaçlar, sektör özeti ve dikkat gerektiren konular.',
+}
+
+// Sunucuda henüz şablonu olmayan tipler. Şablon geldiğinde bu liste boşalır;
+// seçilebilir hâle getirmek için başka bir yere dokunmak gerekmez.
+// (render/template/ altında YoneticiOzetiTemplate yok — belge oluşturulabilir
+// ama önizleme ve .eml üretilemez, o yüzden baştan engelliyoruz.)
+const HAZIR_OLMAYAN_TIPLER = [TEMPLATE_TYPES.YONETICI_OZETI]
+
 export default function YeniBelgeForm() {
   const navigate = useNavigate()
 
@@ -48,81 +62,115 @@ export default function YeniBelgeForm() {
   }
 
   const gecerli = teamId !== '' && title.trim() !== ''
+  const seciliTakim = teams.find((t) => String(t.id) === teamId)
 
   return (
-    <main style={{ padding: 16, maxWidth: 560 }}>
-      <form className="card" onSubmit={olustur}>
-        <h2 className="card__baslik">Yeni mail</h2>
-
-        {hata && (
-          <p style={{ color: '#9c3226', marginTop: 0 }}>{hata}</p>
-        )}
-
-        <div style={{ display: 'grid', gap: 12 }}>
-          <label style={{ display: 'grid', gap: 4 }}>
-            <span>Takım</span>
-            <select value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            {/* Tema takımdan geliyor - renk, maskot, logo. Kullanıcı ayrıca seçmez. */}
-            <small style={{ color: '#6d8296' }}>
-              Mailin rengi, maskotu ve logosu takıma göre belirlenir.
-            </small>
-          </label>
-
-          <fieldset style={{ border: '1px solid #d9e0e7', borderRadius: 4, padding: 12 }}>
-            <legend>Mail tipi</legend>
-            <div style={{ display: 'grid', gap: 6 }}>
-              {Object.values(TEMPLATE_TYPES).map((tip) => (
-                <label key={tip} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
-                  <input
-                    type="radio"
-                    name="templateType"
-                    value={tip}
-                    checked={templateType === tip}
-                    onChange={(e) => setTemplateType(e.target.value)}
-                  />
-                  <span>{TEMPLATE_LABELS[tip]}</span>
-                  {tip === TEMPLATE_TYPES.YONETICI_OZETI && (
-                    <small style={{ color: '#8a5a09' }}>henüz hazır değil</small>
-                  )}
-                </label>
-              ))}
-            </div>
-            {/* Tip sonradan degistirilemiyor: bolum ve sutun yapisi tipe bagli,
-                degistirmek girilen satirlari anlamsiz kilardi. */}
-            <small style={{ color: '#6d8296' }}>
-              Tip sonradan değiştirilemez; yanlış seçerseniz yeni bir mail oluşturun.
-            </small>
-          </fieldset>
-
-          <label style={{ display: 'grid', gap: 4 }}>
-            <span>Başlık</span>
-            <input
-              type="text"
-              value={title}
-              placeholder="Ağustos 2026 Sprint Kapanışı"
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <small style={{ color: '#6d8296' }}>
-              Bu ad yalnızca listede görünür; mailin içindeki başlığı sonra yazacaksınız.
-            </small>
-          </label>
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button varyant="birincil" type="submit" disabled={!gecerli || olusturuluyor}>
-              {olusturuluyor ? 'Oluşturuluyor…' : 'Oluştur'}
-            </Button>
-            <Button varyant="sessiz" onClick={() => navigate('/belgeler')}>
-              Vazgeç
-            </Button>
-          </div>
+    <main className="sayfa">
+      <div className="sayfa__ic sayfa__ic--dar">
+        <div>
+          <h1 className="sayfa__baslik">Yeni mail</h1>
+          <p className="sayfa__alt">
+            Üç bilgi yeter; bölümler ve sütunlar tipe göre hazır gelir.
+          </p>
         </div>
-      </form>
+
+        <form className="card" onSubmit={olustur}>
+          {hata && (
+            <div className="uyari uyari--hata" style={{ marginBottom: 14 }}>
+              {hata}
+            </div>
+          )}
+
+          <div className="izgara" style={{ gap: 18 }}>
+            <div className="alan">
+              <span className="alan__etiket">Takım</span>
+              <div className="seg-grup">
+                {teams.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={String(t.id) === teamId ? 'seg seg--secili' : 'seg'}
+                    onClick={() => setTeamId(String(t.id))}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+              {/* Tema takımdan geliyor - renk, maskot, logo. Kullanıcı ayrıca seçmez. */}
+              <span className="alan__ipucu">
+                Mailin rengi, maskotu ve logosu takıma göre belirlenir
+                {seciliTakim ? ` (tema: ${seciliTakim.themeKey})` : ''}.
+              </span>
+            </div>
+
+            <div className="alan">
+              <span className="alan__etiket">Mail tipi</span>
+              <div className="tip-secim">
+                {Object.values(TEMPLATE_TYPES).map((tip) => {
+                  const hazirDegil = HAZIR_OLMAYAN_TIPLER.includes(tip)
+                  const secili = templateType === tip
+                  const siniflar = ['tip-kutu']
+                  if (secili) siniflar.push('tip-kutu--secili')
+                  if (hazirDegil) siniflar.push('tip-kutu--kapali')
+
+                  return (
+                    <label key={tip} className={siniflar.join(' ')}>
+                      <input
+                        type="radio"
+                        name="templateType"
+                        value={tip}
+                        checked={secili}
+                        disabled={hazirDegil}
+                        onChange={(e) => setTemplateType(e.target.value)}
+                      />
+                      <span className="tip-kutu__ad">
+                        {TEMPLATE_LABELS[tip]}
+                        {hazirDegil && (
+                          <span className="etiket etiket--notr" style={{ marginLeft: 8 }}>
+                            hazırlanıyor
+                          </span>
+                        )}
+                      </span>
+                      <span className="tip-kutu__aciklama">
+                        {hazirDegil
+                          ? 'Şablonu henüz yazılmadı; seçilirse mail üretilemez.'
+                          : TIP_ACIKLAMALARI[tip]}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+              {/* Tip sonradan değiştirilemiyor: bölüm ve sütun yapısı tipe bağlı,
+                  değiştirmek girilen satırları anlamsız kılardı. */}
+              <span className="alan__ipucu">
+                Tip sonradan değiştirilemez; yanlış seçerseniz yeni bir mail oluşturun.
+              </span>
+            </div>
+
+            <label className="alan">
+              <span className="alan__etiket">Başlık</span>
+              <input
+                type="text"
+                value={title}
+                placeholder="Ağustos 2026 Sprint Kapanışı"
+                onChange={(e) => setTitle(e.target.value)}
+              />
+              <span className="alan__ipucu">
+                Bu ad yalnızca listede görünür; mailin içindeki başlığı sonra yazacaksınız.
+              </span>
+            </label>
+
+            <div className="satir-arasi">
+              <Button varyant="birincil" type="submit" disabled={!gecerli || olusturuluyor}>
+                {olusturuluyor ? 'Oluşturuluyor…' : 'Oluştur'}
+              </Button>
+              <Button varyant="sessiz" onClick={() => navigate('/belgeler')}>
+                Vazgeç
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
     </main>
   )
 }

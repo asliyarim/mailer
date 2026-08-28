@@ -5,8 +5,11 @@
 // Sol panel numarali kartlardan olusur (docs/BRIEF.md §2):
 //   1 · Belge ayarlari    2 · Mail bilgileri
 //   3 · Bolumler          4 · Alt notlar
+//
+// Sag panel canli onizleme. Onizlemenin HTML'i buraya da cikiyor (onHtml)
+// cunku "PDF / Yazdir" ayni HTML'i yazdiriyor - ikinci bir uretim YOK.
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { fetchDocument, saveDocument } from '../../lib/apiClient.js'
 import { emptyContent, TEMPLATE_TYPES, validateContent } from '../../lib/mailContent.js'
@@ -18,7 +21,7 @@ import PreviewPane from './PreviewPane.jsx'
 import TopActions from './TopActions.jsx'
 import VersiyonGecmisi from './VersiyonGecmisi.jsx'
 
-export default function EditorPage() {
+export default function EditorPage({ onDurum }) {
   const { id } = useParams()
   const navigate = useNavigate()
 
@@ -28,6 +31,8 @@ export default function EditorPage() {
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [kaydedilmemis, setKaydedilmemis] = useState(false)
   const [gecmisAcik, setGecmisAcik] = useState(false)
+  // Sunucudan gelen HAZIR onizleme HTML'i. Yazdirma bunu kullanir.
+  const [onizlemeHtml, setOnizlemeHtml] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -39,6 +44,28 @@ export default function EditorPage() {
       })
       .catch((e) => setHatalar([e.message]))
   }, [id])
+
+  // Ust seritteki kayit rozeti. Editörden cikinca rozet kalkar.
+  useEffect(() => {
+    if (!onDurum) return undefined
+    if (kaydediliyor) onDurum({ metin: 'Kaydediliyor…' })
+    else if (kaydedilmemis) onDurum({ metin: 'Kaydedilmemiş değişiklik', uyari: true })
+    else if (belge) onDurum({ metin: 'Kaydedildi' })
+    else onDurum(null)
+    return () => onDurum(null)
+  }, [onDurum, belge, kaydediliyor, kaydedilmemis])
+
+  // Tarayici sekmesi kapatilirken uyar. Kaydedilmemis mail, doldurulmasi
+  // 20 dakika suren bir form - sessizce kaybolmasin.
+  useEffect(() => {
+    if (!kaydedilmemis) return undefined
+    function ayrilmadanOnce(e) {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', ayrilmadanOnce)
+    return () => window.removeEventListener('beforeunload', ayrilmadanOnce)
+  }, [kaydedilmemis])
 
   // Icerigin bir dalini gunceller: patch('header', { title: '...' })
   function patch(alan, deger) {
@@ -55,6 +82,8 @@ export default function EditorPage() {
     setBelge((o) => ({ ...o, ...alanlar }))
     setKaydedilmemis(true)
   }
+
+  const onizlemeGeldi = useCallback((html) => setOnizlemeHtml(html), [])
 
   async function kaydet() {
     const bulunanHatalar = validateContent(content)
@@ -93,32 +122,39 @@ export default function EditorPage() {
 
   if (!belge) {
     return (
-      <main style={{ padding: 16 }}>
+      <div className="durum-ekrani">
         {hatalar.length > 0 ? (
-          <p style={{ color: '#9c3226' }}>{hatalar[0]}</p>
+          <div>
+            <p className="bos-durum__baslik">Belge açılamadı</p>
+            <p className="bos-durum__metin">{hatalar[0]}</p>
+            <button className="btn btn--ikincil" onClick={() => navigate('/belgeler')}>
+              Belgelerime dön
+            </button>
+          </div>
         ) : (
           <p>Yükleniyor…</p>
         )}
-      </main>
+      </div>
     )
   }
 
   const templateType = belge.templateType ?? TEMPLATE_TYPES.KAPANIS
 
   return (
-    <div className="editor-layout">
-      <div className="editor-form">
+    <div className="uygulama">
+      <section className="panel panel--editor">
         <TopActions
           belge={belge}
           kaydediliyor={kaydediliyor}
           kaydedilmemis={kaydedilmemis}
+          onizlemeHtml={onizlemeHtml}
           onKaydet={kaydet}
           onListe={() => navigate('/belgeler')}
         />
 
         {hatalar.length > 0 && (
-          <div className="card" style={{ borderColor: '#9c3226', color: '#9c3226' }}>
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <div className="uyari uyari--hata">
+            <ul>
               {hatalar.map((h) => (
                 <li key={h}>{h}</li>
               ))}
@@ -153,9 +189,16 @@ export default function EditorPage() {
           onNotesChange={(notes) => icerikDegisti((o) => ({ ...o, notes }))}
           onFooterChange={(d) => patch('footer', d)}
         />
-      </div>
+      </section>
 
-      <PreviewPane teamId={belge.teamId} templateType={templateType} content={content} />
+      <section className="panel panel--onizleme">
+        <PreviewPane
+          teamId={belge.teamId}
+          templateType={templateType}
+          content={content}
+          onHtml={onizlemeGeldi}
+        />
+      </section>
 
       <VersiyonGecmisi
         acik={gecmisAcik}

@@ -21,6 +21,22 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+springdoc:
+  swagger-ui:
+    # Kimlik dogrulama cerezle yapiliyor; "Try it out" isteklerinin cerezi
+    # tasimasi icin sart. Olmadan her deneme 401 doner.
+    with-credentials: true
+    csrf:
+      # POST/PUT/DELETE denemeleri CsrfCookieFilter'a takilmasin diye
+      # Swagger, XSRF-TOKEN cerezini okuyup X-CSRF-Token basligina koyar.
+      enabled: true
+      use-local-storage: false
+      cookie-name: XSRF-TOKEN
+      header-name: X-CSRF-Token
+    # Uclari alfabetik sirala - liste buyudukce aranan uc kolay bulunsun.
+    operations-sorter: method
+    tags-sorter: alpha
+
 app:
   jwt:
     # odyssey-auth ile AYNI olmak zorunda. Yayinda APP_JWT_SECRET ile ezilir.
@@ -29,10 +45,17 @@ app:
     # Odyssey kabugu API cagrilarini kendi nginx'i uzerinden proxy'ledigi icin
     # tarayici acisindan istek same-origin; ama backend proxy'nin ilettigi
     # Origin basligini (Odyssey alan adi) gorur, o yuzden listede olmali.
-    allowed-origins:
-      - http://localhost:4173
-      - http://localhost:5173
-      - http://localhost:5174
+    # Tarayici AYNI ORIGIN'de bile POST/PUT/DELETE isteklerine Origin basligi
+    # ekler (GET'e eklemez). Kabuk, istegi proxy'lerken bu basligi oldugu gibi
+    # iletiyor - yani kabugun adresi bu listede OLMAK ZORUNDA. Yoksa okuma
+    # calisir ama yazma "403 Invalid CORS request" ile duser; govde duz metin
+    # oldugu icin arayuz sunucunun mesajini da gosteremez, teshisi zorlasir.
+    #
+    # Liste docker-compose'dan APP_CORS_ALLOWED_ORIGINS ile geliyor ve orada
+    # .env'deki port degiskenlerinden turetiliyor. Buradaki degerler yalnizca
+    # compose disinda (orn. IntelliJ'den) calistirmak icin varsayilan;
+    # .env.example'daki portlarla ayni.
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4173,http://localhost:5173,http://localhost:5174}
 
 server:
   port: 8082

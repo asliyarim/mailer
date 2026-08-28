@@ -1,6 +1,6 @@
 // YEREL TEST ARACI - odyssey-auth ile ayni sirla imzalanmis JWT uretir.
 //
-//   node scripts/mint-jwt.js <secret> [sicil] [role]
+//   node scripts/mint-jwt.js <secret> [sicil] [role] [takimId...]
 //
 // Neden var: duman testinin calisan bir kullanici hesabina ihtiyaci olmasin.
 // Backend token'i uretmez, sadece dogrular; ayni sirla imzalanmis token
@@ -9,7 +9,10 @@
 // UYARI: sadece yerel gelistirme. Uretim sirri asla buraya girmemeli.
 const crypto = require('crypto');
 
-const [, , secret, sicil = '10234', role = 'PO'] = process.argv;
+const [, , secret, sicil = '10234', role = 'PO', ...takimlar] = process.argv;
+
+// Takim kimlikleri verilmezse 1 ve 2 - duman testinin varsayilan senaryosu.
+const teamIds = takimlar.length > 0 ? takimlar.map(Number) : [1, 2];
 
 if (!secret) {
   console.error('Kullanım: node scripts/mint-jwt.js <secret> [sicil] [role]');
@@ -24,8 +27,8 @@ const govde = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({
   role,
   fullName: 'Aslı Yarım',
   department: 'Dijital Uygulamalar',
-  teamId: 1,
-  teamIds: [1, 2],
+  teamId: teamIds[0] ?? null,
+  teamIds,
   iat: now,
   exp: now + 3600,
 })}`;

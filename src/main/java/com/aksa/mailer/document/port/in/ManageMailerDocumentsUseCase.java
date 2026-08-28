@@ -1,5 +1,6 @@
 package com.aksa.mailer.document.port.in;
 
+import com.aksa.mailer.document.domain.DownloadFormat;
 import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.MailerDocument;
 import com.aksa.mailer.document.domain.TemplateType;
@@ -23,6 +24,9 @@ public interface ManageMailerDocumentsUseCase {
     List<VersionSummary> versiyonlar(Long documentId);
 
     MailerDocument geriAl(Long documentId, int version, String sicil);
+
+    /** Indirme olcumu. Basarisiz olmasi indirmeyi bozmamali (docs/api.md §10). */
+    void indirmeKaydet(Long documentId, DownloadFormat format, String sicil);
 
     /** Liste ekrani icin hafif ozet - content TASIMAZ. */
     record DocumentSummary(

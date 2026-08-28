@@ -13,8 +13,13 @@ import java.util.List;
  */
 public interface GetTeamsUseCase {
 
-    /** Verilen kullanicinin erisebildigi aktif takimlar. */
-    List<MailTeam> erisilebilirTakimlar(String sicil);
+    /**
+     * Kullanicinin erisebildigi aktif takimlar.
+     *
+     * @param adminMi true ise butun aktif takimlar
+     * @param teamIds ADMIN degilse yalnizca bu kimlikler
+     */
+    List<MailTeam> erisilebilirTakimlar(boolean adminMi, List<Long> teamIds);
 
     /** Tek takim. Yoksa NotFoundException. */
     MailTeam takim(Long id);

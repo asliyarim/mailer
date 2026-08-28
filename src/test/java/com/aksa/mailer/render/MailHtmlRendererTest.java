@@ -2,6 +2,7 @@ package com.aksa.mailer.render;
 
 import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.TemplateType;
+import com.aksa.mailer.render.domain.ThemeRegistry;
 import com.aksa.mailer.render.template.KapanisTemplate;
 import com.aksa.mailer.render.template.PlanlamaTemplate;
 import com.aksa.mailer.render.theme.RpaTheme;
@@ -207,11 +208,37 @@ class MailHtmlRendererTest {
         }
 
         @Test
-        @DisplayName("ikinci tema kendi renklerini üretir - motorda gizli RPA varsayımı yok")
-        void ikinciTema() {
-            String isZekasi = renderer.uret(OrnekIcerik.kapanis(), TemplateType.KAPANIS, "is-zekasi");
+        @DisplayName("her tema kendi renklerini üretir - motorda gizli RPA varsayımı yok")
+        void herTemaKendiRengini() {
+            // Renk sabiti YAZILMIYOR: beklenen deger temanin kendisinden
+            // okunuyor. Boylece bir takimin rengi degistiginde test degil
+            // yalnizca tema guncelleniyor.
+            String rpaHero = ThemeRegistry.tema(RpaTheme.KEY).heroBackground();
 
-            assertThat(isZekasi).contains("#9a5605").doesNotContain("#003b78");
+            ThemeRegistry.hepsi().forEach((anahtar, tema) -> {
+                String cikti = renderer.uret(OrnekIcerik.kapanis(), TemplateType.KAPANIS, anahtar);
+
+                assertThat(cikti)
+                        .as("%s temasi kendi hero rengini kullanmali", anahtar)
+                        .contains(tema.heroBackground())
+                        .contains(tema.blue().sectionHeader());
+
+                if (!anahtar.equals(RpaTheme.KEY)) {
+                    assertThat(cikti)
+                            .as("%s temasina RPA rengi sizmamali", anahtar)
+                            .doesNotContain(rpaHero);
+                }
+            });
+        }
+
+        @Test
+        @DisplayName("bütün takımların teması tanımlı")
+        void butunTemalarTanimli() {
+            // V3__takimlar.sql'deki theme_key degerleri. Biri eksik kalirsa
+            // o takim mail uretemez - Flyway degil, bu test yakalasin.
+            assertThat(ThemeRegistry.hepsi()).containsKeys(
+                    "rpa", "is-zekasi", "urun-gelistirme", "yapay-zeka",
+                    "dijital-uygulamalar", "dokuman", "cbs", "mobil");
         }
 
         @Test

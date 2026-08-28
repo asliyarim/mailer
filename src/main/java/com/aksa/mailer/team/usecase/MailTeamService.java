@@ -22,11 +22,14 @@ public class MailTeamService implements GetTeamsUseCase {
     }
 
     @Override
-    public List<MailTeam> erisilebilirTakimlar(String sicil) {
-        // Sprint 0: herkes tum aktif takimlari gorur. Takim bazli yetki
-        // Sprint 2'de gelecek (yol haritasi) - token'daki teamIds ile
-        // mail_teams eslestirilecek.
-        return mailTeamRepository.aktifTakimlar();
+    public List<MailTeam> erisilebilirTakimlar(boolean adminMi, List<Long> teamIds) {
+        List<MailTeam> aktif = mailTeamRepository.aktifTakimlar();
+        if (adminMi) {
+            return aktif;
+        }
+        // teamIds odyssey-auth'tan geliyor ve mail_teams.id ile ayni
+        // kimlikleri tasiyor (bkz. V3__takimlar.sql).
+        return aktif.stream().filter(t -> teamIds.contains(t.id())).toList();
     }
 
     @Override

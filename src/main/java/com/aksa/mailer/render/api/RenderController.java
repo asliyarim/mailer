@@ -1,10 +1,12 @@
 package com.aksa.mailer.render.api;
 
+import com.aksa.mailer.auth.security.OturumKullanicisi;
 import com.aksa.mailer.document.domain.MailerDocument;
 import com.aksa.mailer.document.port.in.ManageMailerDocumentsUseCase;
 import com.aksa.mailer.render.api.dto.PreviewRequest;
 import com.aksa.mailer.render.usecase.EmlBuilder;
 import com.aksa.mailer.render.usecase.MailHtmlRenderer;
+import com.aksa.mailer.render.usecase.OnizlemeGorselleri;
 import com.aksa.mailer.team.port.in.GetTeamsUseCase;
 import jakarta.validation.Valid;
 import org.springframework.core.io.ByteArrayResource;
@@ -13,6 +15,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,28 +39,43 @@ public class RenderController {
 
     private final MailHtmlRenderer renderer;
     private final EmlBuilder emlBuilder;
+    private final OnizlemeGorselleri onizlemeGorselleri;
     private final ManageMailerDocumentsUseCase documents;
     private final GetTeamsUseCase teams;
 
     public RenderController(MailHtmlRenderer renderer, EmlBuilder emlBuilder,
+                            OnizlemeGorselleri onizlemeGorselleri,
                             ManageMailerDocumentsUseCase documents, GetTeamsUseCase teams) {
         this.renderer = renderer;
         this.emlBuilder = emlBuilder;
+        this.onizlemeGorselleri = onizlemeGorselleri;
         this.documents = documents;
         this.teams = teams;
     }
 
-    /** Govdedeki JSON'u HTML'e cevirir. Istemci bunu oldugu gibi iframe'e basar. */
+    /**
+     * Govdedeki JSON'u HTML'e cevirir. Istemci bunu oldugu gibi iframe'e basar.
+     *
+     * Uretilen HTML .eml'e giden HTML'in AYNISIDIR; tek fark gorsel
+     * referanslari: tarayici cid: adresini cozemedigi icin ayni dosyalarin
+     * base64 hali gomulur (bkz. OnizlemeGorselleri). Ikinci bir HTML uretimi
+     * degildir - duzenin tek kaynagi hala MailHtmlRenderer.
+     */
     @PostMapping(value = "/render/preview", produces = MediaType.TEXT_HTML_VALUE + ";charset=UTF-8")
-    public String onizleme(@Valid @RequestBody PreviewRequest istek) {
+    public String onizleme(@Valid @RequestBody PreviewRequest istek, Authentication authentication) {
+        // Onizleme de takim temasini kullaniyor - baska takimin kimligiyle
+        // mail uretilmesin diye burada da yetki kontrolu var.
+        OturumKullanicisi.of(authentication).dogrula(istek.teamId());
         String themeKey = teams.takim(istek.teamId()).themeKey();
-        return renderer.uret(istek.content(), istek.templateType(), themeKey);
+        String html = renderer.uret(istek.content(), istek.templateType(), themeKey);
+        return onizlemeGorselleri.gomulu(html, renderer.tema(themeKey));
     }
 
     /** "Outlook Maili İndir" - message/rfc822, gorseller cid: ile gomulu. */
     @GetMapping("/documents/{id}/export.eml")
-    public ResponseEntity<Resource> emlIndir(@PathVariable Long id) {
+    public ResponseEntity<Resource> emlIndir(@PathVariable Long id, Authentication authentication) {
         MailerDocument belge = documents.getir(id);
+        OturumKullanicisi.of(authentication).dogrula(belge.teamId());
         String themeKey = teams.takim(belge.teamId()).themeKey();
 
         String html = renderer.uret(belge.content(), belge.templateType(), themeKey);

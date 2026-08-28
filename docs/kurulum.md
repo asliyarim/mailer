@@ -125,8 +125,21 @@ npm install
 npm run dev
 ```
 
-`localhost:5173` açılır; `/api/*` çağrıları 8082 ve 8081'e proxy'lenir
-(bkz. `vite.config.js`). Oturum için önce kabukta giriş yapılmalı.
+`localhost:5173` açılır; `/api/*` çağrıları backend'e ve odyssey-auth'a
+proxy'lenir (bkz. `vite.config.js`). Oturum için önce kabukta giriş yapılmalı.
+
+> **Portları `.env`'den değiştirdiyseniz dev sunucusuna da söyleyin.**
+>
+> `vite.config.js` varsayılan olarak `.env.example`'daki portları kullanır
+> (auth 8081, backend 8082). `.env`'de `ODYSSEY_AUTH_PORT` veya
+> `BACKEND_PORT` değiştirdiyseniz — örneğin Capacity Planner yığınıyla
+> çakışmamak için — dev sunucusu hâlâ eski porta gider ve **oturum sürekli
+> düşer**. Belirti: `npm run dev`'de giriş yapılamıyor ama `localhost:5174`
+> üzerinden her şey çalışıyor.
+>
+> ```bash
+> VITE_AUTH_BASE_URL=http://localhost:8083 npm run dev
+> ```
 
 > **Yerel `npm run build` alacaksan PowerShell kullan.** Git Bash,
 > `VITE_BASE_PATH=/mailer/` değerini Windows yoluna çevirir ve sayfa boş

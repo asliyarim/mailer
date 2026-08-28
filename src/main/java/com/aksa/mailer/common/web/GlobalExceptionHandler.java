@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -27,6 +28,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DomainValidationException.class)
     public ResponseEntity<ApiErrorResponse> validation(DomainValidationException e, HttpServletRequest request) {
         return yanit(HttpStatus.BAD_REQUEST, e.getMessage(), request);
+    }
+
+    /**
+     * Takim yetkisi yok. CsrfCookieFilter'in 403'unden farkli: orada istek
+     * bicimsel olarak reddediliyor, burada kullanicinin o veriye hakki yok.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> erisimYok(AccessDeniedException e, HttpServletRequest request) {
+        return yanit(HttpStatus.FORBIDDEN, e.getMessage(), request);
     }
 
     @ExceptionHandler(VersionConflictException.class)

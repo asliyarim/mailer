@@ -2,12 +2,14 @@ package com.aksa.mailer.document.usecase;
 
 import com.aksa.mailer.common.domain.NotFoundException;
 import com.aksa.mailer.common.domain.VersionConflictException;
+import com.aksa.mailer.document.domain.DownloadFormat;
 import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.MailContentValidator;
 import com.aksa.mailer.document.domain.MailerDocument;
 import com.aksa.mailer.document.port.in.ManageMailerDocumentsUseCase;
 import com.aksa.mailer.document.port.out.MailerDocumentRepository;
 import com.aksa.mailer.document.port.out.MailerDocumentVersionRepository;
+import com.aksa.mailer.document.port.out.MailerDownloadLogRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,11 +26,14 @@ public class MailerDocumentService implements ManageMailerDocumentsUseCase {
 
     private final MailerDocumentRepository documentRepository;
     private final MailerDocumentVersionRepository versionRepository;
+    private final MailerDownloadLogRepository downloadLogRepository;
 
     public MailerDocumentService(MailerDocumentRepository documentRepository,
-                                 MailerDocumentVersionRepository versionRepository) {
+                                 MailerDocumentVersionRepository versionRepository,
+                                 MailerDownloadLogRepository downloadLogRepository) {
         this.documentRepository = documentRepository;
         this.versionRepository = versionRepository;
+        this.downloadLogRepository = downloadLogRepository;
     }
 
     @Override
@@ -84,6 +89,14 @@ public class MailerDocumentService implements ManageMailerDocumentsUseCase {
         versionRepository.ekle(
                 kaydedilen.id(), kaydedilen.currentVersion(), komut.content(), komut.sicil());
         return kaydedilen;
+    }
+
+    @Override
+    @Transactional
+    public void indirmeKaydet(Long documentId, DownloadFormat format, String sicil) {
+        // teamId'yi belgeden aliyoruz - istemcinin gonderdigine guvenmiyoruz.
+        MailerDocument belge = getir(documentId);
+        downloadLogRepository.ekle(belge.id(), belge.teamId(), format, sicil);
     }
 
     @Override

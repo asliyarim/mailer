@@ -1,35 +1,32 @@
-// Basit modal. Versiyon gecmisi, silme onayi gibi akislar bunu kullanir.
-// Kontrollu bilesen: acik/kapali durumu CAGIRANDA tutulur.
+// Basit modal. Sürüm geçmişi, silme onayı gibi akışlar bunu kullanır.
+// Kontrollü bileşen: açık/kapalı durumu ÇAĞIRANDA tutulur.
+
+import { useEffect } from 'react'
 
 export default function Modal({ acik, baslik, onKapat, children }) {
+  // ESC ile kapanmalı: fare zorunluluğu olan bir modal klavyeyle çalışan
+  // kullanıcıyı içeride kilitler.
+  useEffect(() => {
+    if (!acik) return
+    function tusaBasildi(e) {
+      if (e.key === 'Escape') onKapat()
+    }
+    document.addEventListener('keydown', tusaBasildi)
+    return () => document.removeEventListener('keydown', tusaBasildi)
+  }, [acik, onKapat])
+
   if (!acik) return null
 
   return (
-    <div
-      onClick={onKapat}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(14, 28, 45, 0.45)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
-      }}
-    >
+    <div className="modal-zemin" onClick={onKapat}>
       <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={baslik}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          background: '#fff',
-          borderRadius: 6,
-          padding: 20,
-          minWidth: 420,
-          maxWidth: '90vw',
-          maxHeight: '85vh',
-          overflow: 'auto',
-        }}
       >
-        <h2 style={{ margin: '0 0 14px', fontSize: 16 }}>{baslik}</h2>
+        <h2 className="modal__baslik">{baslik}</h2>
         {children}
       </div>
     </div>

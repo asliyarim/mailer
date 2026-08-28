@@ -1,5 +1,6 @@
 package com.aksa.mailer.team.api;
 
+import com.aksa.mailer.auth.security.OturumKullanicisi;
 import com.aksa.mailer.team.api.dto.MailTeamResponse;
 import com.aksa.mailer.team.port.in.GetTeamsUseCase;
 import org.springframework.security.core.Authentication;
@@ -30,9 +31,8 @@ public class MailTeamController {
 
     @GetMapping
     public List<MailTeamResponse> takimlar(Authentication authentication) {
-        // JwtCookieAuthFilter principal olarak sicil'i yaziyor.
-        String sicil = authentication.getName();
-        return getTeamsUseCase.erisilebilirTakimlar(sicil).stream()
+        OturumKullanicisi kullanici = OturumKullanicisi.of(authentication);
+        return getTeamsUseCase.erisilebilirTakimlar(kullanici.adminMi(), kullanici.teamIds()).stream()
                 .map(MailTeamResponse::of)
                 .toList();
     }

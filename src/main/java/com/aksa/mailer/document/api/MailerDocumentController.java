@@ -1,6 +1,8 @@
 package com.aksa.mailer.document.api;
 
+import com.aksa.mailer.auth.security.OturumKullanicisi;
 import com.aksa.mailer.document.api.dto.CreateDocumentRequest;
+import com.aksa.mailer.document.api.dto.DownloadLogRequest;
 import com.aksa.mailer.document.api.dto.MailerDocumentResponse;
 import com.aksa.mailer.document.api.dto.SaveDocumentRequest;
 import com.aksa.mailer.document.domain.MailerDocument;
@@ -39,19 +41,22 @@ public class MailerDocumentController {
     }
 
     @GetMapping
-    public List<ManageMailerDocumentsUseCase.DocumentSummary> listele(@RequestParam Long teamId) {
+    public List<ManageMailerDocumentsUseCase.DocumentSummary> listele(@RequestParam Long teamId,
+                                                                      Authentication authentication) {
+        OturumKullanicisi.of(authentication).dogrula(teamId);
         return documents.takimBelgeleri(teamId);
     }
 
     @GetMapping("/{id}")
-    public MailerDocumentResponse getir(@PathVariable Long id) {
-        return yanit(documents.getir(id));
+    public MailerDocumentResponse getir(@PathVariable Long id, Authentication authentication) {
+        return yanit(erisilebilirBelge(id, authentication));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public MailerDocumentResponse olustur(@Valid @RequestBody CreateDocumentRequest istek,
                                           Authentication authentication) {
+        OturumKullanicisi.of(authentication).dogrula(istek.teamId());
         MailerDocument olusan = documents.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
                 istek.teamId(), istek.templateType(), istek.title(), authentication.getName()));
         return yanit(olusan);
@@ -61,14 +66,27 @@ public class MailerDocumentController {
     public MailerDocumentResponse kaydet(@PathVariable Long id,
                                          @Valid @RequestBody SaveDocumentRequest istek,
                                          Authentication authentication) {
+        erisilebilirBelge(id, authentication);
         MailerDocument kaydedilen = documents.kaydet(new ManageMailerDocumentsUseCase.SaveDocumentCommand(
                 id, istek.title(), istek.subject(), istek.content(),
                 istek.expectedVersion(), authentication.getName()));
         return yanit(kaydedilen);
     }
 
+    /** Indirme olcumu. Govde yok, 204 doner (docs/api.md §10). */
+    @PostMapping("/{id}/downloads")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void indirmeKaydet(@PathVariable Long id,
+                              @Valid @RequestBody DownloadLogRequest istek,
+                              Authentication authentication) {
+        erisilebilirBelge(id, authentication);
+        documents.indirmeKaydet(id, istek.format(), authentication.getName());
+    }
+
     @GetMapping("/{id}/versions")
-    public List<ManageMailerDocumentsUseCase.VersionSummary> versiyonlar(@PathVariable Long id) {
+    public List<ManageMailerDocumentsUseCase.VersionSummary> versiyonlar(@PathVariable Long id,
+                                                                         Authentication authentication) {
+        erisilebilirBelge(id, authentication);
         return documents.versiyonlar(id);
     }
 
@@ -76,7 +94,19 @@ public class MailerDocumentController {
     public MailerDocumentResponse geriAl(@PathVariable Long id,
                                          @PathVariable int version,
                                          Authentication authentication) {
+        erisilebilirBelge(id, authentication);
         return yanit(documents.geriAl(id, version, authentication.getName()));
+    }
+
+    /**
+     * Belgeyi getirir ve kullanicinin o takima yetkisi oldugunu dogrular.
+     * Her belge ucunun basinda cagrilir - yetki kontrolu tek bir yerde
+     * dursun ve yeni bir uc eklenirken unutulmasi zorlassin.
+     */
+    private MailerDocument erisilebilirBelge(Long id, Authentication authentication) {
+        MailerDocument belge = documents.getir(id);
+        OturumKullanicisi.of(authentication).dogrula(belge.teamId());
+        return belge;
     }
 
     private MailerDocumentResponse yanit(MailerDocument document) {

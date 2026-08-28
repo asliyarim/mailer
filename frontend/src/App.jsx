@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { fetchCurrentUser } from './lib/apiClient.js'
 import TopBar from './components/shared/TopBar.jsx'
@@ -20,6 +20,10 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [durum, setDurum] = useState('yukleniyor') // yukleniyor | hazir | oturumYok
 
+  // Üst şeritteki kayıt rozeti. Editör kendi durumunu buraya bildirir;
+  // rozet uygulamanın tepesinde olduğu için form kaydırılsa da görünür.
+  const [kayitDurumu, setKayitDurumu] = useState(null)
+
   useEffect(() => {
     fetchCurrentUser()
       .then((u) => {
@@ -29,29 +33,45 @@ export default function App() {
       .catch(() => setDurum('oturumYok'))
   }, [])
 
+  // useCallback: EditorPage bunu useEffect bağımlılığı olarak kullanıyor,
+  // her çizimde yeni fonksiyon üretilirse effect sonsuz döner.
+  const durumBildir = useCallback((yeni) => setKayitDurumu(yeni), [])
+
   if (durum === 'yukleniyor') {
-    return <p style={{ padding: 24 }}>Yükleniyor…</p>
+    return (
+      <div className="durum-ekrani">
+        <p>Yükleniyor…</p>
+      </div>
+    )
   }
 
   if (durum === 'oturumYok') {
     // Kabuk disinda acildiysa Odyssey'in giris sayfasina gonder.
     const odysseyUrl = import.meta.env.VITE_ODYSSEY_URL || '/'
     return (
-      <div style={{ padding: 24 }}>
-        <p>Oturumunuz bulunamadı.</p>
-        <a href={odysseyUrl}>Odyssey üzerinden giriş yapın</a>
+      <div className="durum-ekrani">
+        <div>
+          <p className="bos-durum__baslik">Oturumunuz bulunamadı</p>
+          <p className="bos-durum__metin">
+            Aksa Mailer, Odyssey oturumuyla çalışır. Giriş yaptıktan sonra
+            uygulamayı katalogdan yeniden açın.
+          </p>
+          <a className="btn btn--birincil" href={odysseyUrl}>
+            Odyssey'e git
+          </a>
+        </div>
       </div>
     )
   }
 
   return (
     <BrowserRouter basename={BASENAME}>
-      <TopBar user={user} />
+      <TopBar user={user} durum={kayitDurumu?.metin} durumUyari={kayitDurumu?.uyari} />
       <Routes>
         <Route path="/" element={<Navigate to="/belgeler" replace />} />
         <Route path="/belgeler" element={<DocumentListPage user={user} />} />
         <Route path="/editor/new" element={<YeniBelgeForm />} />
-        <Route path="/editor/:id" element={<EditorPage user={user} />} />
+        <Route path="/editor/:id" element={<EditorPage user={user} onDurum={durumBildir} />} />
       </Routes>
     </BrowserRouter>
   )

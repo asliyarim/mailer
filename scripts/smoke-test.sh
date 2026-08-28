@@ -20,6 +20,8 @@ if [[ ! -f "$KOK/.env" ]]; then
 fi
 
 SECRET="$(grep '^APP_JWT_SECRET=' "$KOK/.env" | cut -d= -f2-)"
+# Kabuk portu CORS kontrolunde lazim; .env tek dogru kaynak.
+ODYSSEY_SHELL_PORT="$(grep '^ODYSSEY_SHELL_PORT=' "$KOK/.env" | cut -d= -f2- || true)"
 if [[ -z "$SECRET" ]]; then
   echo "HATA: APP_JWT_SECRET bos." >&2
   exit 1
@@ -64,6 +66,26 @@ kontrol "CSRF basligi olmadan POST reddedilir" 403 \
       -d '{"teamId":1,"templateType":"KAPANIS","title":"x"}' "$TABAN/api/mailer/documents")"
 kontrol "gecerli token kabul edilir" 200 "$(kod -b "$CEREZ" "$TABAN/api/mailer/teams")"
 
+# CORS: tarayici AYNI ORIGIN'de bile POST/PUT/DELETE isteklerine Origin
+# basligi ekler (GET'e eklemez). Kabuk bu basligi oldugu gibi proxy'ledigi
+# icin kabugun adresi izin listesinde olmak zorunda.
+#
+# Bu kontrol curl'un varsayilan davranisiyla YAKALANMIYORDU: curl Origin
+# gondermez, dolayisiyla CORS denetimine hic girmez. Yasanan hata tam da
+# buydu - okuma calisiyordu, yazma "403 Invalid CORS request" ile dusuyordu
+# ve duman testi yesil yaniyordu. O yuzden basligi ELLE gonderiyoruz.
+KABUK_ORIGIN="http://localhost:${ODYSSEY_SHELL_PORT:-4173}"
+kontrol "kabuk origin'inden yazma kabul edilir" 201 \
+  "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H "Origin: $KABUK_ORIGIN" \
+      -H 'Content-Type: application/json' \
+      -d '{"teamId":1,"templateType":"KAPANIS","title":"[DUMAN TESTI] CORS"}' \
+      "$TABAN/api/mailer/documents")"
+kontrol "yabanci origin'den yazma reddedilir" 403 \
+  "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Origin: http://kotu-site.example' \
+      -H 'Content-Type: application/json' \
+      -d '{"teamId":1,"templateType":"KAPANIS","title":"sizinti"}' \
+      "$TABAN/api/mailer/documents")"
+
 # Regresyon: Spring'in kendi urettigi hatalar /error'a forward edilir ve
 # guvenlik zinciri ikinci kez calisir. ERROR dispatch serbest birakilmazsa
 # bu 400'ler istemciye 401 olarak ulasir ve frontend "oturum dustu" sanir
@@ -75,6 +97,26 @@ kontrol "bozuk JSON govdesi 400" 400 \
   "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
       -d '{bozuk' "$TABAN/api/mailer/documents")"
 kontrol "olmayan yol 404" 404 "$(kod -b "$CEREZ" "$TABAN/api/mailer/boyle-bir-yol-yok")"
+
+# Baska bir takimin PO'su, bizim takimin verisine ulasamamali. Bu bolum bir
+# GUVENLIK sinirini koruyor - kirilirsa veri sizintisi demektir.
+echo "== Takim yetkisi =="
+BASKA_TOKEN="$(node "$KOK/scripts/mint-jwt.js" "$SECRET" 99999 PO 2)"
+BASKA="access_token=$BASKA_TOKEN"
+
+kontrol "yetkisiz takimin belgeleri listelenemez" 403 \
+  "$(kod -b "$BASKA" "$TABAN/api/mailer/documents?teamId=1")"
+kontrol "yetkisiz takimda belge olusturulamaz" 403 \
+  "$(kod -X POST -b "$BASKA; XSRF-TOKEN=$CSRF" -H "X-CSRF-Token: $CSRF" \
+      -H 'Content-Type: application/json' \
+      -d '{"teamId":1,"templateType":"KAPANIS","title":"sizinti"}' \
+      "$TABAN/api/mailer/documents")"
+kontrol "yetkisiz takim adina onizleme uretilemez" 403 \
+  "$(kod -X POST -b "$BASKA; XSRF-TOKEN=$CSRF" -H "X-CSRF-Token: $CSRF" \
+      -H 'Content-Type: application/json' \
+      -d '{"teamId":1,"templateType":"KAPANIS","content":{"schemaVersion":1,"header":{"title":"x","period":"","teamLabel":"y"},"meeting":{"date":"","time":"","place":""},"intro":[],"sections":[],"notes":[],"footer":{"line1":"","line2":""}}}' \
+      "$TABAN/api/mailer/render/preview")"
+kontrol "kendi takimini gorebiliyor" 200 "$(kod -b "$BASKA" "$TABAN/api/mailer/documents?teamId=2")"
 
 echo "== Belge yasam dongusu =="
 printf '%s' '{"teamId":1,"templateType":"KAPANIS","title":"[DUMAN TESTİ] Ağustos 2026 Sprint Kapanışı"}' \
@@ -167,8 +209,15 @@ ONIZLEME="$(curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
 
 kontrol "onizleme HTML donuyor" "var" \
   "$(echo "$ONIZLEME" | grep -qF '<!doctype html>' && echo var || echo yok)"
-kontrol "onizlemede cid: gorseller var" "var" \
-  "$(echo "$ONIZLEME" | grep -qF 'src="cid:hero"' && echo var || echo yok)"
+# Gorsel adresleri iki yolda FARKLI olmak zorunda ve bu fark tek yonlu:
+#   onizleme -> data:  (tarayici cid: adresini cozemez, iframe sandbox="")
+#   .eml     -> cid:   (Outlook data: URI'yi cozemez)
+# Ikisi karisirsa bir taraf kirik gorselle calisir. Asagidaki dort kontrol
+# bunu her iki yonden de kilitliyor.
+kontrol "onizlemede cozulmemis cid: kalmaz" "temiz" \
+  "$(echo "$ONIZLEME" | grep -qF 'src="cid:' && echo kirli || echo temiz)"
+kontrol "onizlemede gorseller gomulu geliyor" "var" \
+  "$(echo "$ONIZLEME" | grep -qF 'src="data:image/png;base64,' && echo var || echo yok)"
 kontrol "onizlemede Turkce bozulmuyor" "var" \
   "$(echo "$ONIZLEME" | grep -qF 'Hakediş Faturaları · İĞÜÇÖşğıçö' && echo var || echo yok)"
 # Mimari Kural 2: Outlook'un desteklemedigi CSS uretilmemeli.
@@ -220,10 +269,47 @@ curl -s -D "$GECICI/eml-basliklar.txt" -o "$GECICI/mail.eml" -b "$CEREZ" \
   "$TABAN/api/mailer/documents/$ID/export.eml"
 kontrol "eml message/rfc822 donuyor" "var" \
   "$(grep -qi 'Content-Type: message/rfc822' "$GECICI/eml-basliklar.txt" && echo var || echo yok)"
+
+# Istemci dosya adini BU BASLIKTAN okuyor, title'dan degil (docs/api.md §9).
+# Baslik kaybolursa indirme "Agustos_2026....eml" yerine tarayicinin
+# uydurdugu bir adla iner; Turkce karakterli ad kimi Windows kurulumlarinda
+# bozuk cikar - dosyaAdi()'ndaki ASCII indirgemesi tam bunun icin.
+kontrol "eml dosya adi baslikta geliyor" "var" \
+  "$(grep -qi 'Content-Disposition:.*filename=.*\.eml' "$GECICI/eml-basliklar.txt" && echo var || echo yok)"
+# Ad ASCII'ye indirgenmis olmali - Turkce karakter kalmamali.
+kontrol "eml dosya adi ASCII" "temiz" \
+  "$(grep -i 'Content-Disposition:' "$GECICI/eml-basliklar.txt" \
+     | grep -qE '[ğüşıöçĞÜŞİÖÇ]' && echo kirli || echo temiz)"
 kontrol "eml X-Unsent tasiyor" "var" \
   "$(grep -qF 'X-Unsent: 1' "$GECICI/mail.eml" && echo var || echo yok)"
 kontrol "eml bes gorseli gomuyor" 5 \
   "$(grep -c '^Content-ID: <' "$GECICI/mail.eml")"
+# .eml govdesi base64 kodlu - cid: duz metin olarak GECMEZ, once cozmek
+# gerekiyor. Cozulmus HTML'de cid: olmali, data: OLMAMALI: Outlook data:
+# URI'yi cozemez, onizlemenin gomme yolu maile sizmamali.
+EML_HTML="$(node -e '
+const fs=require("fs");
+const eml=fs.readFileSync(process.argv[1],"utf8");
+const govde=eml.split("Content-Transfer-Encoding: base64\r\n\r\n")[1].split("\r\n--")[0].replace(/\r\n/g,"");
+process.stdout.write(Buffer.from(govde,"base64").toString("utf8"));
+' "$GECICI/mail.eml")"
+kontrol "eml govdesi cid: kullaniyor" "var" \
+  "$(echo "$EML_HTML" | grep -qF 'src="cid:hero"' && echo var || echo yok)"
+kontrol "eml govdesinde data: URI yok" "temiz" \
+  "$(echo "$EML_HTML" | grep -qF 'data:image/' && echo kirli || echo temiz)"
+
+kontrol "indirme logu kaydediliyor" 204 \
+  "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
+      -d '{"format":"EML"}' "$TABAN/api/mailer/documents/$ID/downloads")"
+# PDF de gecerli bir bicim: "PDF / Yazdir" akisi bunu gonderiyor. EML ile
+# birlikte ikisi de kilitli olmali - biri sessizce reddedilirse olcum yarim
+# kalir ve kimse fark etmez.
+kontrol "PDF indirme kaydi da kabul edilir" 204 \
+  "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
+      -d '{"format":"PDF"}' "$TABAN/api/mailer/documents/$ID/downloads")"
+kontrol "gecersiz indirme bicimi reddedilir" 400 \
+  "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
+      -d '{"format":"DOCX"}' "$TABAN/api/mailer/documents/$ID/downloads")"
 
 echo
 echo "gecti: $gecti   kaldi: $kaldi   (belge id: $ID)"

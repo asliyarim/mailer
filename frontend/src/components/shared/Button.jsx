@@ -1,26 +1,36 @@
-// Tek dugme bileseni. Yeni bir dugme gorunumu gerekiyorsa BURAYA varyant
-// eklenir - bilesenlerin icine dagilmis inline stiller birikmesin.
+// Tek düğme bileşeni. Yeni bir düğme görünümü gerekiyorsa BURAYA varyant
+// eklenir — bileşenlerin içine dağılmış inline stiller birikmesin.
+//
+// Görünümün kendisi index.css'te (.btn ve .btn--*). Burada sadece hangi
+// sınıfın seçileceği var; renk kodu bu dosyada yazılmaz.
 
 const VARYANTLAR = {
-  birincil: { background: '#12467f', color: '#fff', border: '1px solid #12467f' },
-  ikincil: { background: '#fff', color: '#12467f', border: '1px solid #12467f' },
-  sessiz: { background: 'transparent', color: '#3d4f64', border: '1px solid transparent' },
+  birincil: 'btn--birincil', // ana eylem: Kaydet, Oluştur
+  ikincil: 'btn--ikincil', // ikinci sıra: İndir, Sürüm geçmişi
+  yesil: 'btn--yesil', // olumlu/ekleme: Satır ekle
+  sessiz: 'btn--sessiz', // düşük vurgu: Vazgeç, geri dön
+  tehlike: 'btn--tehlike', // silme
 }
 
-export default function Button({ varyant = 'ikincil', disabled, onClick, type = 'button', children }) {
+export default function Button({
+  varyant = 'ikincil',
+  boyut,
+  disabled,
+  onClick,
+  type = 'button',
+  baslik,
+  children,
+}) {
+  const siniflar = ['btn', VARYANTLAR[varyant] ?? VARYANTLAR.ikincil]
+  if (boyut === 'kucuk') siniflar.push('btn--kucuk')
+
   return (
     <button
       type={type}
+      className={siniflar.join(' ')}
       onClick={onClick}
       disabled={disabled}
-      style={{
-        ...VARYANTLAR[varyant],
-        padding: '7px 14px',
-        borderRadius: 4,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.55 : 1,
-        font: 'inherit',
-      }}
+      title={baslik}
     >
       {children}
     </button>

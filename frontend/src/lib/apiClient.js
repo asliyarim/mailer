@@ -72,16 +72,68 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Govdesi olmayan hatalar icin duruma ozel mesajlar.
+ *
+ * 401 ve 403 KARISTIRILMAMALI: 401 oturumla ilgilidir ve yenilemekle gecer
+ * (authFetch zaten bir kez dener), 403 ise yetkiyle ilgilidir - kullanici
+ * ne kadar yenilerse yenilesin gecmez. "Tekrar giris yapin" demek, o takima
+ * erisimi olmayan kullaniciyi bos yere giris cikis dongusune sokar.
+ * 401'in govdesi zaten yoktur (docs/api.md, Ortak kurallar).
+ */
+const DURUM_MESAJLARI = {
+  401: "Oturumunuz sona ermiş. Odyssey üzerinden yeniden giriş yapın.",
+  403: "Bu işlem için yetkiniz yok. Takım erişiminizi kontrol edin.",
+};
+
+/**
+ * JSON olmayan hata govdesini teknik ipucu olarak hazirlar.
+ *
+ * Neden: DURUM_MESAJLARI bir TAHMINDIR. Gercek bir vakada sunucu 403 ile
+ * duz metin "Invalid CORS request" dondu (Spring'in CORS filtresi, gövde
+ * JSON degil) ve biz kullaniciya "yetkiniz yok" dedik - yetkiyle hicbir
+ * ilgisi yoktu, kabuk portu CORS listesinde degildi. Sunucu sebebi
+ * SOYLEMISTI, biz atiyorduk.
+ *
+ * Artik atmiyoruz: tahmini kullanicinin okuyacagi cumle olarak tutup,
+ * sunucunun ham sozunu yaninda tasiyoruz. Sorunu bildiren kisi ekrandaki
+ * metni okudugunda teshis elimizde oluyor.
+ */
+function hamIpucu(metin) {
+  const temiz = metin?.trim();
+  if (!temiz) return null;
+  // nginx/proxy HTML hata sayfasi - kullaniciya gosterilecek bir sey degil.
+  if (temiz.startsWith("<")) return null;
+  return temiz.length > 120 ? `${temiz.slice(0, 120)}…` : temiz;
+}
+
 async function ensureOk(response, fallbackMessage) {
   if (response.ok) return response;
-  let message = fallbackMessage;
+  let message = DURUM_MESAJLARI[response.status] ?? fallbackMessage;
+  let ipucu = null;
+
   try {
-    const body = await response.json();
-    if (body?.message) message = body.message;
+    // Govdeyi metin olarak okuyup JSON'u KENDIMIZ deniyoruz; response.json()
+    // basarisiz olunca govde tamamen kayboluyordu.
+    const metin = await response.text();
+    let govde = null;
+    try {
+      govde = JSON.parse(metin);
+    } catch {
+      // JSON degil - ham metni ipucu olarak sakla
+    }
+    if (govde?.message) {
+      // Sunucunun kendi mesaji her zaman daha spesifik - o kazanir.
+      message = govde.message;
+    } else {
+      ipucu = hamIpucu(metin);
+    }
   } catch {
-    // govde JSON degilse fallback mesaj kalir
+    // govde hic okunamadi - yukaridaki mesaj tek basina kalir
   }
-  throw new ApiError(`${message} (HTTP ${response.status})`, response.status);
+
+  const detay = ipucu ? ` — sunucu: "${ipucu}"` : "";
+  throw new ApiError(`${message}${detay} (HTTP ${response.status})`, response.status);
 }
 
 function getInit() {
@@ -177,11 +229,40 @@ export async function renderPreview({ teamId, templateType, content }) {
   return response.text();
 }
 
-/** .eml dosyasini indirilebilir Blob olarak getirir. */
+/**
+ * Content-Disposition basligindaki dosya adini okur.
+ *
+ * Sunucu adi BILEREK ASCII'ye indirger (RenderController.dosyaAdi): bazi
+ * istemciler UTF-8 dosya adini yanlis cozup adi bozuyor. Istemcide
+ * belge.title'i kullanmak o karari bosa cikarir - "Ağustos Kapanışı.eml"
+ * kimi Windows kurulumlarinda bozuk adla iner. O yuzden ad sunucudan gelir.
+ *
+ * Baslik okunamazsa null doner (farkli origin'de tarayici bu basligi
+ * gizler); cagiran taraf o zaman kendi yedegini kullanir.
+ */
+function dosyaAdiCoz(contentDisposition) {
+  if (!contentDisposition) return null;
+  // Once RFC 5987 bicimi: filename*=UTF-8''...
+  const genisletilmis = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (genisletilmis) {
+    try {
+      return decodeURIComponent(genisletilmis[1]);
+    } catch {
+      // bozuk yuzde kodlamasi - duz bicime dus
+    }
+  }
+  const duz = contentDisposition.match(/filename="?([^";]+)"?/i);
+  return duz ? duz[1] : null;
+}
+
+/** .eml dosyasini indirilebilir Blob + sunucunun verdigi dosya adiyla getirir. */
 export async function fetchEml(id) {
   const response = await authFetch(`/api/mailer/documents/${id}/export.eml`, getInit);
   await ensureOk(response, "Mail dosyası indirilemedi.");
-  return response.blob();
+  return {
+    blob: await response.blob(),
+    dosyaAdi: dosyaAdiCoz(response.headers.get("Content-Disposition")),
+  };
 }
 
 export async function logDownload(id, format) {
