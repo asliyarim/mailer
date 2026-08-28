@@ -9,8 +9,11 @@
 // Satirlar NESNE tutar, dizi degil - alanlara anahtarla erisilir (row.sector),
 // indeksle degil (bkz. docs/BRIEF.md §6).
 
-import { ROW_FIELD_LABELS } from '../../lib/mailContent.js'
+import { KONU_TURLERI, ROW_FIELD_LABELS } from '../../lib/mailContent.js'
 import Button from '../shared/Button.jsx'
+
+// Uzun metin alan alanlar tek satirlik input yerine textarea alir.
+const COK_SATIRLI = ['note', 'expected', 'summary', 'stake']
 
 export default function RowCard({ row, columns, sira, onChange, onSil }) {
   function alanDegisti(alan, deger) {
@@ -30,7 +33,16 @@ export default function RowCard({ row, columns, sira, onChange, onSil }) {
         {columns.map((alan) => (
           <label key={alan} style={{ display: 'grid', gap: 4 }}>
             <span>{ROW_FIELD_LABELS[alan] ?? alan}</span>
-            {alan === 'note' ? (
+            {alan === 'topicType' ? (
+              <select value={row[alan] ?? ''} onChange={(e) => alanDegisti(alan, e.target.value)}>
+                <option value="">—</option>
+                {KONU_TURLERI.map((tur) => (
+                  <option key={tur} value={tur}>
+                    {tur}
+                  </option>
+                ))}
+              </select>
+            ) : COK_SATIRLI.includes(alan) ? (
               // Cok satirli metin: satir sonlari KORUNUR - mailde tek satira
               // yapismamasi sunucudaki renderer'in isi, ama girdiyi burada
               // kirpma (bkz. docs/BRIEF.md, Kural 2 sonundaki not).

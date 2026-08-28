@@ -96,6 +96,7 @@ export default function EditorPage() {
 
         <SectionList
           sections={content.sections}
+          templateType={templateType}
           onChange={(sections) => setContent((o) => ({ ...o, sections }))}
         />
 

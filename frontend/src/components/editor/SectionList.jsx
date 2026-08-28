@@ -5,9 +5,9 @@
 
 import RowCard from './RowCard.jsx'
 import Button from '../shared/Button.jsx'
-import { countRows, emptyRow, emptySection, ROW_FIELDS } from '../../lib/mailContent.js'
+import { countRows, emptyRow, emptySection, VARSAYILAN_SUTUNLAR } from '../../lib/mailContent.js'
 
-export default function SectionList({ sections, onChange }) {
+export default function SectionList({ sections, templateType, onChange }) {
   function bolumGuncelle(index, yeniBolum) {
     onChange(sections.map((b, i) => (i === index ? yeniBolum : b)))
   }
@@ -31,7 +31,7 @@ export default function SectionList({ sections, onChange }) {
   }
 
   function bolumEkle() {
-    onChange([...sections, emptySection(`bolum-${sections.length + 1}`, 'YENİ BÖLÜM')])
+    onChange([...sections, emptySection(`bolum-${sections.length + 1}`, 'YENİ BÖLÜM', 'blue', templateType)])
   }
 
   return (
@@ -63,7 +63,7 @@ export default function SectionList({ sections, onChange }) {
             <RowCard
               key={satirIndex}
               row={satir}
-              columns={bolum.columns ?? ROW_FIELDS}
+              columns={bolum.columns ?? VARSAYILAN_SUTUNLAR[templateType] ?? VARSAYILAN_SUTUNLAR.KAPANIS}
               sira={satirIndex + 1}
               onChange={(yeni) => satirGuncelle(bolumIndex, satirIndex, yeni)}
               onSil={() => satirSil(bolumIndex, satirIndex)}

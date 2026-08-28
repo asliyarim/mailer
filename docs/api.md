@@ -311,6 +311,10 @@ renk temadan gelir. İstemci asla renk kodu göndermez.
 
 ### Satır alanları
 
+Tek sözlük; hangi alanın kullanılacağını bölümün `columns` dizisi söyler.
+
+**Sprint Kapanış**
+
 | Alan | Başlık | Not |
 |---|---|---|
 | `sector` | Sektör | Görünür sütunsa tablolar buna göre **gruplanır** ve sütun olarak ayrıca çizilmez |
@@ -320,7 +324,27 @@ renk temadan gelir. İstemci asla renk kodu göndermez.
 | `stage` | Aşama | |
 | `stake` | Paydaşlar | |
 | `note` | Kritik Not | |
-| `gain` | Kazanç (Saat/Yıl) | Varsayılan **kapalı**; kullanan takım `columns`'a ekler |
+| `gain` | Kazanç (Saat/Yıl) | Varsayılan **kapalı** |
+
+**Sprint Planlama**
+
+| Alan | Başlık | Not |
+|---|---|---|
+| `topicType` | Konu Türü | `Hikaye` \| `Görev` \| `Bug` \| `İyileştirme` \| `Diğer` |
+| `jira` | Konu Anahtarı | Kapanış'takiyle aynı alan |
+| `summary` | Özet | |
+| `status` | Durum | Sayaç şeridi buna göre dağılım gösterir (en fazla üç durum) |
+| `expected` | Beklenen Konular | |
+| `stake` | Paydaşlar | |
+| `sprint` | Sprint | Varsayılan **kapalı** |
+| `department` | Departman | Varsayılan **kapalı** |
+
+Planlamada tablolar **gruplanmaz** — konular kullanıcının girdiği sırada tek
+listede durur.
+
+> **Neden bazı alanlar varsayılan kapalı:** mail gövdesi 760 piksel sabit
+> (Outlook yüzde genişlikli iç içe kutuyu bozar). Altı sütundan fazlası
+> okunmaz hale geliyor.
 
 `columns` hangi alanın **hangi sırayla** çizileceğini söyler. Satırda olup
 `columns`'ta olmayan alan çizilmez ama **silinmez** — sütunu kapatıp açmak

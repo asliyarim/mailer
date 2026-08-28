@@ -149,6 +149,18 @@ cat > "$GECICI/onizleme.json" <<'JSON'
  "footer":{"line1":"Teşekkür ederiz.","line2":"Başarılar dileriz!"}}}
 JSON
 
+cat > "$GECICI/planlama.json" <<'JSON'
+{"teamId":1,"templateType":"PLANLAMA","content":{"schemaVersion":1,
+ "header":{"title":"DİJİTAL UYGULAMALAR SPRINT PLANLAMA","period":"Eylül 2026","teamLabel":"BT – RPA Takımı"},
+ "meeting":{"date":"06.05.2026","time":"09:30","place":"Toplantı Salonu"},
+ "intro":["Önümüzdeki sprintte ele alınacak konular."],
+ "sections":[{"key":"topics","title":"SPRINT KONULARI","tone":"blue",
+   "columns":["topicType","jira","summary","status","expected","stake"],
+   "rows":[{"topicType":"Hikaye","jira":"RPA-1128","summary":"Banka Mutabakat Süreci","status":"UAT","expected":"UAT toplantısı planlanacak.","stake":"Tuba Kaya İşler"}]}],
+ "notes":[{"tone":"blue","text":"Not"}],
+ "footer":{"line1":"Teşekkür ederiz.","line2":"İyi çalışmalar!"}}}
+JSON
+
 ONIZLEME="$(curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
   -H 'Content-Type: application/json; charset=UTF-8' \
   --data-binary "@$GECICI/onizleme.json" "$TABAN/api/mailer/render/preview")"
@@ -185,11 +197,24 @@ kontrol "disari aktarim oncesi kayit" 200 \
       -H 'Content-Type: application/json; charset=UTF-8' \
       --data-binary "@$GECICI/eml-kaydet.json" "$TABAN/api/mailer/documents/$ID")"
 
-kontrol "gecersiz icerikli belge disari aktarilamaz" 400 \
-  "$(kod -b "$CEREZ" "$TABAN/api/mailer/documents/999999/export.eml" > /dev/null; \
-     kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
-      -d '{"teamId":1,"templateType":"PLANLAMA","content":{"schemaVersion":1,"header":{"title":"x","period":"","teamLabel":"y"},"meeting":{"date":"","time":"","place":""},"intro":[],"sections":[],"notes":[],"footer":{"line1":"","line2":""}}}' \
+kontrol "olmayan belge disari aktarilamaz" 404 \
+  "$(kod -b "$CEREZ" "$TABAN/api/mailer/documents/999999/export.eml")"
+
+# Yonetici Ozeti Sprint 2'de gelecek. O zamana kadar sessizce yanlis sablon
+# uretmek yerine acikca hata vermeli.
+kontrol "hazir olmayan mail tipi onizlenemez" 400 \
+  "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
+      -d '{"teamId":1,"templateType":"YONETICI_OZETI","content":{"schemaVersion":1,"header":{"title":"x","period":"","teamLabel":"y"},"meeting":{"date":"","time":"","place":""},"intro":[],"sections":[],"notes":[],"footer":{"line1":"","line2":""}}}' \
       "$TABAN/api/mailer/render/preview")"
+
+# Planlama artik uretiliyor - regresyon kontrolu.
+PLAN="$(curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+  -H 'Content-Type: application/json; charset=UTF-8' \
+  --data-binary "@$GECICI/planlama.json" "$TABAN/api/mailer/render/preview")"
+kontrol "planlama maili uretiliyor" "var" \
+  "$(echo "$PLAN" | grep -qF 'TOPLAM KONU' && echo var || echo yok)"
+kontrol "planlama tek tablo - gruplama yok" "var" \
+  "$(echo "$PLAN" | grep -qF 'KONU TÜRÜ' && echo var || echo yok)"
 
 curl -s -D "$GECICI/eml-basliklar.txt" -o "$GECICI/mail.eml" -b "$CEREZ" \
   "$TABAN/api/mailer/documents/$ID/export.eml"

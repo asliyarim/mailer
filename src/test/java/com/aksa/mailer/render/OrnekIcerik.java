@@ -63,6 +63,51 @@ public final class OrnekIcerik {
                 new MailContent.Footer("Teşekkür ederiz.", "Başarılar dileriz!"));
     }
 
+    /**
+     * Sprint Planlama ornegi. Veriler v6.1'in samplePlanning dizisinden.
+     * Tek bolum - planlamada analiz/gelistirme ayrimi yok.
+     */
+    public static MailContent planlama() {
+        return new MailContent(
+                1,
+                new MailContent.Header(
+                        "DİJİTAL UYGULAMALAR SPRINT PLANLAMA",
+                        "Eylül 2026 Sprint Planlaması",
+                        "BT – RPA Takımı"),
+                new MailContent.Meeting("06.05.2026", "09:30", "Toplantı Salonu"),
+                List.of("Önümüzdeki sprintte ele alınacak konular aşağıda özetlenmiştir."),
+                List.of(new MailSection("topics", "SPRINT KONULARI", Tone.BLUE,
+                        List.of("topicType", "jira", "summary", "status", "expected", "stake"),
+                        List.of(
+                                planKonusu("Hikaye", "RPA-1128",
+                                        "CI8809 – Banka Mutabakat Süreci Geliştirme 3/3", "UAT",
+                                        "06.05.2026 tarihinde öğleden önce UAT toplantısı planlanacak.",
+                                        "Tuba Kaya İşler"),
+                                planKonusu("Hikaye", "RPA-1127",
+                                        "CI8809 – Banka Mutabakat Süreci Geliştirme 2/3", "DEVELOPMENT",
+                                        "Filtreleme işlemleri için iş birimi kontrollerine yönelik veri hazırlanacak.",
+                                        "Tuba Kaya İşler"),
+                                planKonusu("Görev", "RPA-1301",
+                                        "Şebeke Operasyonları raporlama iyileştirmesi", "UAT",
+                                        "Test senaryoları paydaşlarla gözden geçirilecek.",
+                                        "İlknur Özgün Tarı")))),
+                List.of(new MailContent.Note(Tone.BLUE,
+                        "Planlanan konular sprint boyunca güncellenebilir; değişiklikler ayrıca paylaşılacaktır.")),
+                new MailContent.Footer("Teşekkür ederiz.", "İyi çalışmalar!"));
+    }
+
+    private static Map<String, String> planKonusu(String tur, String anahtar, String ozet,
+                                                  String durum, String beklenen, String paydas) {
+        Map<String, String> s = new LinkedHashMap<>();
+        s.put("topicType", tur);
+        s.put("jira", anahtar);
+        s.put("summary", ozet);
+        s.put("status", durum);
+        s.put("expected", beklenen);
+        s.put("stake", paydas);
+        return s;
+    }
+
     private static Map<String, String> satir(String sektor, String jira, String ci, String surec, String paydas) {
         Map<String, String> s = new LinkedHashMap<>();
         s.put("sector", sektor);

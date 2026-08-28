@@ -23,36 +23,59 @@ export const TEMPLATE_LABELS = {
 export const TONES = ["blue", "green"];
 
 /**
- * Satir alanlari. DIKKAT: satirlar dizi degil NESNE tutar - prototipte
- * data[0], data[1] diye indeksle gezilirdi ve bir sutun eklenince her sey
- * kayardi (bkz. docs/BRIEF.md §6).
+ * Tüm satır alanları, tek sözlük. Hangi alanın hangi mail tipinde
+ * kullanılacağını bölümün `columns` dizisi söyler — şema tek, seçim tipe göre.
+ *
+ * DİKKAT: satırlar dizi değil NESNE tutar. Prototipte `data[0]`, `data[1]`
+ * diye indeksle geziliyordu ve bir sütun eklenince her şey kayıyordu
+ * (bkz. docs/api.md, content şeması kural 1).
  */
-export const ROW_FIELDS = ["sector", "jira", "ci", "process", "stage", "stake", "note", "gain"];
+export const ROW_FIELDS = [
+  // Sprint Kapanış
+  "sector", "jira", "ci", "process", "stage", "stake", "note", "gain",
+  // Sprint Planlama
+  "topicType", "summary", "status", "sprint", "expected", "department",
+];
 
 export const ROW_FIELD_LABELS = {
   sector: "Sektör",
-  jira: "Jira",
+  jira: "Jira / Konu Anahtarı",
   ci: "CI",
   process: "Süreç",
   stage: "Aşama",
-  stake: "Paydaş",
+  stake: "Paydaşlar",
   note: "Kritik Not",
   gain: "Kazanç (Saat/Yıl)",
+  topicType: "Konu Türü",
+  summary: "Özet",
+  status: "Durum",
+  sprint: "Sprint",
+  expected: "Beklenen Konular",
+  department: "Departman",
 };
 
+/** Konu Türü seçenekleri (v6.1'den). */
+export const KONU_TURLERI = ["Hikaye", "Görev", "Bug", "İyileştirme", "Diğer"];
+
 /**
- * Yeni bölümün varsayılan sütunları. "gain" varsayılan olarak KAPALI -
- * her takım kazanç saati takip etmiyor, açan takım columns'a ekler.
- * Sunucu, satırda olup columns'ta olmayan alanı çizmez; veri kaybolmaz.
+ * Mail tipine göre varsayılan sütunlar. Gövde 760px sabit; altı sütundan
+ * fazlası Outlook'ta okunmaz hale geliyor, o yüzden geri kalanlar varsayılan
+ * olarak KAPALI. İhtiyacı olan takım `columns`'a ekler — satırda olup
+ * `columns`'ta olmayan alan çizilmez ama silinmez.
  */
-export const VARSAYILAN_SUTUNLAR = ["sector", "jira", "ci", "process", "stage", "stake", "note"];
+export const VARSAYILAN_SUTUNLAR = {
+  KAPANIS: ["sector", "jira", "ci", "process", "stage", "stake", "note"],
+  PLANLAMA: ["topicType", "jira", "summary", "status", "expected", "stake"],
+  YONETICI_OZETI: ["sector", "process", "note"],
+};
 
 export function emptyRow() {
   return Object.fromEntries(ROW_FIELDS.map((field) => [field, ""]));
 }
 
-export function emptySection(key, title, tone = "blue") {
-  return { key, title, tone, columns: [...VARSAYILAN_SUTUNLAR], rows: [] };
+export function emptySection(key, title, tone = "blue", templateType = TEMPLATE_TYPES.KAPANIS) {
+  const columns = VARSAYILAN_SUTUNLAR[templateType] ?? VARSAYILAN_SUTUNLAR.KAPANIS;
+  return { key, title, tone, columns: [...columns], rows: [] };
 }
 
 /** Yeni belgenin bos icerigi. Sunucu da ayni iskeleti uretir - tek dogru kaynak odur. */

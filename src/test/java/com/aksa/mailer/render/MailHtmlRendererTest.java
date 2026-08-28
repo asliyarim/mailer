@@ -3,6 +3,7 @@ package com.aksa.mailer.render;
 import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.TemplateType;
 import com.aksa.mailer.render.template.KapanisTemplate;
+import com.aksa.mailer.render.template.PlanlamaTemplate;
 import com.aksa.mailer.render.theme.RpaTheme;
 import com.aksa.mailer.render.usecase.MailHtmlRenderer;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,7 @@ class MailHtmlRendererTest {
 
     @BeforeEach
     void kurulum() {
-        renderer = new MailHtmlRenderer(List.of(new KapanisTemplate()));
+        renderer = new MailHtmlRenderer(List.of(new KapanisTemplate(), new PlanlamaTemplate()));
         html = renderer.uret(OrnekIcerik.kapanis(), TemplateType.KAPANIS, RpaTheme.KEY);
     }
 
@@ -224,7 +225,10 @@ class MailHtmlRendererTest {
     @Test
     @DisplayName("henüz yazılmamış mail tipi açıkça hata verir")
     void hazirOlmayanTip() {
-        assertThatThrownBy(() -> renderer.uret(OrnekIcerik.kapanis(), TemplateType.PLANLAMA, RpaTheme.KEY))
+        // Yönetici Özeti Sprint 2'de gelecek; o zamana kadar sessizce yanlış
+        // şablon üretmek yerine açıkça söylüyor.
+        assertThatThrownBy(() ->
+                renderer.uret(OrnekIcerik.kapanis(), TemplateType.YONETICI_OZETI, RpaTheme.KEY))
                 .hasMessageContaining("henüz üretilemiyor");
     }
 
