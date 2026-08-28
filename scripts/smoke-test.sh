@@ -137,6 +137,69 @@ kontrol "olmayan surume geri alma 404" 404 \
   "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
       "$TABAN/api/mailer/documents/$ID/versions/99/rollback")"
 
+echo "== Mail uretimi =="
+cat > "$GECICI/onizleme.json" <<'JSON'
+{"teamId":1,"templateType":"KAPANIS","content":{"schemaVersion":1,
+ "header":{"title":"DİJİTAL UYGULAMALAR SPRINT BİLGİLENDİRME","period":"Ağustos 2026 Sprint Kapanışı","teamLabel":"BT – RPA Takımı"},
+ "meeting":{"date":"03.09.2026","time":"10:00","place":"Toplantı Salonu"},
+ "intro":["Giriş paragrafı."],
+ "sections":[{"key":"analysis","title":"ANALİZ ÇALIŞMALARI","tone":"blue","columns":["sector","jira","process"],
+   "rows":[{"sector":"Elektrik","jira":"RPA-2066","process":"Şebeke Operasyonları Aylık Hakediş Faturaları · İĞÜÇÖşğıçö"}]}],
+ "notes":[{"tone":"green","text":"Not"}],
+ "footer":{"line1":"Teşekkür ederiz.","line2":"Başarılar dileriz!"}}}
+JSON
+
+ONIZLEME="$(curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+  -H 'Content-Type: application/json; charset=UTF-8' \
+  --data-binary "@$GECICI/onizleme.json" "$TABAN/api/mailer/render/preview")"
+
+kontrol "onizleme HTML donuyor" "var" \
+  "$(echo "$ONIZLEME" | grep -qF '<!doctype html>' && echo var || echo yok)"
+kontrol "onizlemede cid: gorseller var" "var" \
+  "$(echo "$ONIZLEME" | grep -qF 'src="cid:hero"' && echo var || echo yok)"
+kontrol "onizlemede Turkce bozulmuyor" "var" \
+  "$(echo "$ONIZLEME" | grep -qF 'Hakediş Faturaları · İĞÜÇÖşğıçö' && echo var || echo yok)"
+# Mimari Kural 2: Outlook'un desteklemedigi CSS uretilmemeli.
+kontrol "onizlemede yasak CSS yok" "temiz" \
+  "$(echo "$ONIZLEME" | grep -qE 'display:flex|border-radius|linear-gradient|background-image|max-width' \
+     && echo kirli || echo temiz)"
+kontrol "gecersiz icerikle onizleme 400" 400 \
+  "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
+      -d '{"teamId":1,"templateType":"KAPANIS","content":{"schemaVersion":1,"header":{"title":"","period":"","teamLabel":""},"meeting":{"date":"","time":"","place":""},"intro":[],"sections":[],"notes":[],"footer":{"line1":"","line2":""}}}' \
+      "$TABAN/api/mailer/render/preview")"
+
+# Geri alma, belgeyi surum 1'in BOS varsayilan icerigine dondurdu. Bos baslikli
+# belge dogrulamadan gecmez ve export 400 doner - dogru davranis. Disari
+# aktarmadan once gecerli icerigi yeniden kaydediyoruz.
+SURUM="$(curl -s -b "$CEREZ" "$TABAN/api/mailer/documents/$ID" | alan currentVersion)"
+node -e '
+const fs=require("fs");
+const o=JSON.parse(fs.readFileSync(process.argv[1]+"/onizleme.json","utf8"));
+fs.writeFileSync(process.argv[1]+"/eml-kaydet.json", JSON.stringify({
+  title:"[DUMAN TESTİ] Ağustos 2026 Sprint Kapanışı",
+  subject:"RPA Sprint Kapanış Bilgilendirme – Ağustos 2026",
+  expectedVersion:Number(process.argv[2]), content:o.content}));
+' "$GECICI" "$SURUM"
+kontrol "disari aktarim oncesi kayit" 200 \
+  "$(kod -X PUT -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+      -H 'Content-Type: application/json; charset=UTF-8' \
+      --data-binary "@$GECICI/eml-kaydet.json" "$TABAN/api/mailer/documents/$ID")"
+
+kontrol "gecersiz icerikli belge disari aktarilamaz" 400 \
+  "$(kod -b "$CEREZ" "$TABAN/api/mailer/documents/999999/export.eml" > /dev/null; \
+     kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
+      -d '{"teamId":1,"templateType":"PLANLAMA","content":{"schemaVersion":1,"header":{"title":"x","period":"","teamLabel":"y"},"meeting":{"date":"","time":"","place":""},"intro":[],"sections":[],"notes":[],"footer":{"line1":"","line2":""}}}' \
+      "$TABAN/api/mailer/render/preview")"
+
+curl -s -D "$GECICI/eml-basliklar.txt" -o "$GECICI/mail.eml" -b "$CEREZ" \
+  "$TABAN/api/mailer/documents/$ID/export.eml"
+kontrol "eml message/rfc822 donuyor" "var" \
+  "$(grep -qi 'Content-Type: message/rfc822' "$GECICI/eml-basliklar.txt" && echo var || echo yok)"
+kontrol "eml X-Unsent tasiyor" "var" \
+  "$(grep -qF 'X-Unsent: 1' "$GECICI/mail.eml" && echo var || echo yok)"
+kontrol "eml bes gorseli gomuyor" 5 \
+  "$(grep -c '^Content-ID: <' "$GECICI/mail.eml")"
+
 echo
 echo "gecti: $gecti   kaldi: $kaldi   (belge id: $ID)"
 [[ "$kaldi" -eq 0 ]]

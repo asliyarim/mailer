@@ -28,7 +28,9 @@ services:
 
   odyssey-auth:
     build:
-      context: ../Downloads/odyssey-auth
+      # Klasorun yeri kisiden kisiye degisiyor (indirme, zip, yeniden
+      # adlandirma). .env'den ezilebilir - bkz. .env.example.
+      context: ${ODYSSEY_AUTH_PATH:-../Downloads/odyssey-auth}
       dockerfile: Dockerfile
     container_name: aksa-mailer-odyssey-auth
     restart: unless-stopped
@@ -52,13 +54,16 @@ services:
 
   odyssey-shell:
     build:
-      context: "../Downloads/Landing Page"
+      context: ${LANDING_PAGE_PATH:-../Downloads/Landing Page}
       dockerfile: Dockerfile
     container_name: aksa-mailer-odyssey-shell
     restart: unless-stopped
     volumes:
       # Imajdaki Railway sablonu yerine yerel surum: http + servis adlari.
       - ./local/odyssey-shell.nginx.conf:/etc/nginx/templates/default.conf.template:ro
+      # Katalog kartini acilista ekler. Bu olmadan /mailer/ yolu calisir ama
+      # kart listede GORUNMEZ - kabuk deposu bizim uygulamayi bilmiyor.
+      - ./local/odyssey-shell/40-aksa-mailer-karti.sh:/docker-entrypoint.d/40-aksa-mailer-karti.sh:ro
     ports:
       - "${ODYSSEY_SHELL_PORT:-4173}:80"
     depends_on:

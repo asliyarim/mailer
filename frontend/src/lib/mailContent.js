@@ -27,7 +27,7 @@ export const TONES = ["blue", "green"];
  * data[0], data[1] diye indeksle gezilirdi ve bir sutun eklenince her sey
  * kayardi (bkz. docs/BRIEF.md §6).
  */
-export const ROW_FIELDS = ["sector", "jira", "ci", "process", "stage", "stake", "note"];
+export const ROW_FIELDS = ["sector", "jira", "ci", "process", "stage", "stake", "note", "gain"];
 
 export const ROW_FIELD_LABELS = {
   sector: "Sektör",
@@ -36,15 +36,23 @@ export const ROW_FIELD_LABELS = {
   process: "Süreç",
   stage: "Aşama",
   stake: "Paydaş",
-  note: "Not",
+  note: "Kritik Not",
+  gain: "Kazanç (Saat/Yıl)",
 };
+
+/**
+ * Yeni bölümün varsayılan sütunları. "gain" varsayılan olarak KAPALI -
+ * her takım kazanç saati takip etmiyor, açan takım columns'a ekler.
+ * Sunucu, satırda olup columns'ta olmayan alanı çizmez; veri kaybolmaz.
+ */
+export const VARSAYILAN_SUTUNLAR = ["sector", "jira", "ci", "process", "stage", "stake", "note"];
 
 export function emptyRow() {
   return Object.fromEntries(ROW_FIELDS.map((field) => [field, ""]));
 }
 
 export function emptySection(key, title, tone = "blue") {
-  return { key, title, tone, columns: [...ROW_FIELDS], rows: [] };
+  return { key, title, tone, columns: [...VARSAYILAN_SUTUNLAR], rows: [] };
 }
 
 /** Yeni belgenin bos icerigi. Sunucu da ayni iskeleti uretir - tek dogru kaynak odur. */

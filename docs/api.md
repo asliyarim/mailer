@@ -286,7 +286,7 @@ Tam açıklama: [`BRIEF.md` §6](BRIEF.md). Burada bağlayıcı olan kısım:
       "columns": ["sector","jira","ci","process","stage","stake","note"],
       "rows": [
         { "sector": "…", "jira": "…", "ci": "…", "process": "…",
-          "stage": "…", "stake": "…", "note": "…" }
+          "stage": "…", "stake": "…", "note": "…", "gain": "850" }
       ]
     }
   ],
@@ -308,6 +308,23 @@ Tam açıklama: [`BRIEF.md` §6](BRIEF.md). Burada bağlayıcı olan kısım:
 
 `tone` değeri `blue` | `green`. Bu bir **renk adı değil, rol adı** — gerçek
 renk temadan gelir. İstemci asla renk kodu göndermez.
+
+### Satır alanları
+
+| Alan | Başlık | Not |
+|---|---|---|
+| `sector` | Sektör | Görünür sütunsa tablolar buna göre **gruplanır** ve sütun olarak ayrıca çizilmez |
+| `jira` | JIRA | Listedeki ilk sütun kalın ve renkli çizilir |
+| `ci` | CI | |
+| `process` | Süreç | |
+| `stage` | Aşama | |
+| `stake` | Paydaşlar | |
+| `note` | Kritik Not | |
+| `gain` | Kazanç (Saat/Yıl) | Varsayılan **kapalı**; kullanan takım `columns`'a ekler |
+
+`columns` hangi alanın **hangi sırayla** çizileceğini söyler. Satırda olup
+`columns`'ta olmayan alan çizilmez ama **silinmez** — sütunu kapatıp açmak
+veri kaybettirmez.
 
 ---
 

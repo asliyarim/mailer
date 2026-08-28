@@ -1,7 +1,7 @@
 # Aksa Mailer — Teknik Brief
 
 > **Bu belge nedir:** Aksa Mailer projesine yeni katılan geliştirici için bağlam belgesi.
-> Claude'a (veya başka bir asistana) olduğu gibi yapıştır, sonra sorularını sor.
+> 
 > Repo henüz yeni; burada anlatılan yapının çoğu **kurulacak**, hazır değil.
 >
 > **Ekip:** Aslı  · Efe · Emren
