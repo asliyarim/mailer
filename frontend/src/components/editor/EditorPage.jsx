@@ -1,16 +1,22 @@
 // Editorun TEK durum sahibi. Alt bilesenlerin hepsi kontrolludur: kendi
 // icinde icerik tutmaz, deger + onChange alir. Yeni bir form alani eklerken
 // durumu buraya koy, bilesenin icine degil.
+//
+// Sol panel numarali kartlardan olusur (docs/BRIEF.md §2):
+//   1 · Belge ayarlari    2 · Mail bilgileri
+//   3 · Bolumler          4 · Alt notlar
 
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { fetchDocument, saveDocument } from '../../lib/apiClient.js'
 import { emptyContent, TEMPLATE_TYPES, validateContent } from '../../lib/mailContent.js'
+import BelgeAyarlari from './BelgeAyarlari.jsx'
 import MetaForm from './MetaForm.jsx'
 import SectionList from './SectionList.jsx'
 import NotesForm from './NotesForm.jsx'
 import PreviewPane from './PreviewPane.jsx'
 import TopActions from './TopActions.jsx'
+import VersiyonGecmisi from './VersiyonGecmisi.jsx'
 
 export default function EditorPage() {
   const { id } = useParams()
@@ -20,6 +26,8 @@ export default function EditorPage() {
   const [content, setContent] = useState(emptyContent())
   const [hatalar, setHatalar] = useState([])
   const [kaydediliyor, setKaydediliyor] = useState(false)
+  const [kaydedilmemis, setKaydedilmemis] = useState(false)
+  const [gecmisAcik, setGecmisAcik] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -27,6 +35,7 @@ export default function EditorPage() {
       .then((d) => {
         setBelge(d)
         setContent(d.content)
+        setKaydedilmemis(false)
       })
       .catch((e) => setHatalar([e.message]))
   }, [id])
@@ -34,6 +43,17 @@ export default function EditorPage() {
   // Icerigin bir dalini gunceller: patch('header', { title: '...' })
   function patch(alan, deger) {
     setContent((onceki) => ({ ...onceki, [alan]: { ...onceki[alan], ...deger } }))
+    setKaydedilmemis(true)
+  }
+
+  function icerikDegisti(guncelleyici) {
+    setContent(guncelleyici)
+    setKaydedilmemis(true)
+  }
+
+  function belgeDegisti(alanlar) {
+    setBelge((o) => ({ ...o, ...alanlar }))
+    setKaydedilmemis(true)
   }
 
   async function kaydet() {
@@ -50,9 +70,10 @@ export default function EditorPage() {
         expectedVersion: belge.currentVersion,
       })
       setBelge(kaydedilen)
+      setContent(kaydedilen.content)
+      setKaydedilmemis(false)
     } catch (e) {
       // 409 = araya baskasi kaydetmis. Korlemesine uzerine YAZMA.
-      // TODO (Sprint 2): kullaniciya "yenile / uzerine yaz" secenegi sun.
       if (e.status === 409) {
         setHatalar(['Bu belge siz düzenlerken başkası tarafından kaydedildi. Sayfayı yenileyin.'])
       } else {
@@ -63,7 +84,26 @@ export default function EditorPage() {
     }
   }
 
-  const templateType = belge?.templateType ?? TEMPLATE_TYPES.KAPANIS
+  function geriAlindi(guncelBelge) {
+    setBelge(guncelBelge)
+    setContent(guncelBelge.content)
+    setKaydedilmemis(false)
+    setHatalar([])
+  }
+
+  if (!belge) {
+    return (
+      <main style={{ padding: 16 }}>
+        {hatalar.length > 0 ? (
+          <p style={{ color: '#9c3226' }}>{hatalar[0]}</p>
+        ) : (
+          <p>Yükleniyor…</p>
+        )}
+      </main>
+    )
+  }
+
+  const templateType = belge.templateType ?? TEMPLATE_TYPES.KAPANIS
 
   return (
     <div className="editor-layout">
@@ -71,6 +111,7 @@ export default function EditorPage() {
         <TopActions
           belge={belge}
           kaydediliyor={kaydediliyor}
+          kaydedilmemis={kaydedilmemis}
           onKaydet={kaydet}
           onListe={() => navigate('/belgeler')}
         />
@@ -85,30 +126,44 @@ export default function EditorPage() {
           </div>
         )}
 
+        <BelgeAyarlari
+          belge={belge}
+          onDegisti={belgeDegisti}
+          onVersiyonlar={() => setGecmisAcik(true)}
+        />
+
         <MetaForm
           header={content.header}
           meeting={content.meeting}
           intro={content.intro}
           onHeaderChange={(d) => patch('header', d)}
           onMeetingChange={(d) => patch('meeting', d)}
-          onIntroChange={(intro) => setContent((o) => ({ ...o, intro }))}
+          onIntroChange={(intro) => icerikDegisti((o) => ({ ...o, intro }))}
         />
 
         <SectionList
           sections={content.sections}
           templateType={templateType}
-          onChange={(sections) => setContent((o) => ({ ...o, sections }))}
+          onChange={(sections) => icerikDegisti((o) => ({ ...o, sections }))}
         />
 
         <NotesForm
           notes={content.notes}
           footer={content.footer}
-          onNotesChange={(notes) => setContent((o) => ({ ...o, notes }))}
+          onNotesChange={(notes) => icerikDegisti((o) => ({ ...o, notes }))}
           onFooterChange={(d) => patch('footer', d)}
         />
       </div>
 
-      <PreviewPane teamId={belge?.teamId} templateType={templateType} content={content} />
+      <PreviewPane teamId={belge.teamId} templateType={templateType} content={content} />
+
+      <VersiyonGecmisi
+        acik={gecmisAcik}
+        documentId={belge.id}
+        guncelSurum={belge.currentVersion}
+        onKapat={() => setGecmisAcik(false)}
+        onGeriAlindi={geriAlindi}
+      />
     </div>
   )
 }

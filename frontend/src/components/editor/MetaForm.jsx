@@ -11,7 +11,7 @@ export default function MetaForm({ header, meeting, intro, onHeaderChange, onMee
 
   return (
     <section className="card">
-      <h2 className="card__baslik">Mail bilgileri</h2>
+      <h2 className="card__baslik">2 · Mail bilgileri</h2>
 
       <div style={{ display: 'grid', gap: 8 }}>
         <label style={{ display: 'grid', gap: 4 }}>

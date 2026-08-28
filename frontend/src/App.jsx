@@ -4,6 +4,7 @@ import { fetchCurrentUser } from './lib/apiClient.js'
 import TopBar from './components/shared/TopBar.jsx'
 import DocumentListPage from './components/shared/DocumentListPage.jsx'
 import EditorPage from './components/editor/EditorPage.jsx'
+import YeniBelgeForm from './components/editor/YeniBelgeForm.jsx'
 
 // Rotalar: / · /belgeler · /editor/new · /editor/:id
 //
@@ -49,7 +50,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/belgeler" replace />} />
         <Route path="/belgeler" element={<DocumentListPage user={user} />} />
-        <Route path="/editor/new" element={<EditorPage user={user} />} />
+        <Route path="/editor/new" element={<YeniBelgeForm />} />
         <Route path="/editor/:id" element={<EditorPage user={user} />} />
       </Routes>
     </BrowserRouter>

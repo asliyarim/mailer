@@ -4,6 +4,7 @@
 // takimin uc bolumu olabilir. Bolum sayisini koda gomme (docs/BRIEF.md §6).
 
 import RowCard from './RowCard.jsx'
+import SutunSecimi from './SutunSecimi.jsx'
 import Button from '../shared/Button.jsx'
 import { countRows, emptyRow, emptySection, VARSAYILAN_SUTUNLAR } from '../../lib/mailContent.js'
 
@@ -30,6 +31,10 @@ export default function SectionList({ sections, templateType, onChange }) {
     bolumGuncelle(bolumIndex, { ...bolum, rows: bolum.rows.filter((_, i) => i !== satirIndex) })
   }
 
+  function bolumSil(index) {
+    onChange(sections.filter((_, i) => i !== index))
+  }
+
   function bolumEkle() {
     onChange([...sections, emptySection(`bolum-${sections.length + 1}`, 'YENİ BÖLÜM', 'blue', templateType)])
   }
@@ -38,41 +43,68 @@ export default function SectionList({ sections, templateType, onChange }) {
     <section className="card">
       {/* Sayac SAKLANMAZ, satir sayisindan hesaplanir (docs/BRIEF.md §6). */}
       <h2 className="card__baslik">
-        Bölümler ve satırlar · toplam {countRows({ sections })} satır
+        3 · Bölümler ve satırlar
+        <span style={{ fontWeight: 400, color: '#6d8296' }}>
+          {' '}· toplam {countRows({ sections })} satır
+        </span>
       </h2>
 
-      {sections.map((bolum, bolumIndex) => (
-        <div key={bolum.key} style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-            <input
-              type="text"
-              value={bolum.title}
-              onChange={(e) => bolumGuncelle(bolumIndex, { ...bolum, title: e.target.value })}
+      {sections.length === 0 && (
+        <p style={{ color: '#6d8296', fontSize: 14 }}>
+          Henüz bölüm yok. Alttaki düğmeyle ekleyin.
+        </p>
+      )}
+
+      {sections.map((bolum, bolumIndex) => {
+        const sutunlar = bolum.columns ?? VARSAYILAN_SUTUNLAR[templateType] ?? VARSAYILAN_SUTUNLAR.KAPANIS
+        return (
+          <div
+            key={bolum.key}
+            style={{ marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #e2e9ef' }}
+          >
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+              <input
+                type="text"
+                style={{ flex: 1 }}
+                value={bolum.title}
+                onChange={(e) => bolumGuncelle(bolumIndex, { ...bolum, title: e.target.value })}
+              />
+              {/* Ton, temadaki renge cevrilir - burada renk kodu yazilmaz. */}
+              <select
+                value={bolum.tone}
+                onChange={(e) => bolumGuncelle(bolumIndex, { ...bolum, tone: e.target.value })}
+              >
+                <option value="blue">Mavi</option>
+                <option value="green">Yeşil</option>
+              </select>
+              <Button varyant="sessiz" onClick={() => bolumSil(bolumIndex)}>
+                Bölümü sil
+              </Button>
+            </div>
+
+            <SutunSecimi
+              templateType={templateType}
+              columns={sutunlar}
+              onChange={(yeniSutunlar) =>
+                bolumGuncelle(bolumIndex, { ...bolum, columns: yeniSutunlar })
+              }
             />
-            {/* Ton, temadaki renge cevrilir - burada renk kodu yazilmaz. */}
-            <select
-              value={bolum.tone}
-              onChange={(e) => bolumGuncelle(bolumIndex, { ...bolum, tone: e.target.value })}
-            >
-              <option value="blue">Mavi</option>
-              <option value="green">Yeşil</option>
-            </select>
+
+            {bolum.rows.map((satir, satirIndex) => (
+              <RowCard
+                key={satirIndex}
+                row={satir}
+                columns={sutunlar}
+                sira={satirIndex + 1}
+                onChange={(yeni) => satirGuncelle(bolumIndex, satirIndex, yeni)}
+                onSil={() => satirSil(bolumIndex, satirIndex)}
+              />
+            ))}
+
+            <Button onClick={() => satirEkle(bolumIndex)}>Satır ekle</Button>
           </div>
-
-          {bolum.rows.map((satir, satirIndex) => (
-            <RowCard
-              key={satirIndex}
-              row={satir}
-              columns={bolum.columns ?? VARSAYILAN_SUTUNLAR[templateType] ?? VARSAYILAN_SUTUNLAR.KAPANIS}
-              sira={satirIndex + 1}
-              onChange={(yeni) => satirGuncelle(bolumIndex, satirIndex, yeni)}
-              onSil={() => satirSil(bolumIndex, satirIndex)}
-            />
-          ))}
-
-          <Button onClick={() => satirEkle(bolumIndex)}>Satır ekle</Button>
-        </div>
-      ))}
+        )
+      })}
 
       <Button varyant="sessiz" onClick={bolumEkle}>
         Bölüm ekle

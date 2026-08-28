@@ -10,7 +10,7 @@ export default function NotesForm({ notes, footer, onNotesChange, onFooterChange
 
   return (
     <section className="card">
-      <h2 className="card__baslik">Alt notlar ve kapanış</h2>
+      <h2 className="card__baslik">4 · Alt notlar ve kapanış</h2>
 
       {notes.map((not, index) => (
         <div key={index} style={{ display: 'grid', gap: 6, marginBottom: 10 }}>

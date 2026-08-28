@@ -34,7 +34,13 @@ export default function PreviewPane({ teamId, templateType, content }) {
           setHata(null)
         })
         .catch((e) => {
-          if (!iptal) setHata(e.message)
+          if (iptal) return
+          setHata(e.message)
+          // Onizleme BOSALTILIYOR. Eski HTML'i birakmak, formda olmayan bir
+          // maili gostermek demek - onizlemenin yalan soylemesi. Projenin
+          // butun mimarisi bunu onlemek uzerine kurulu (Mimari Kural 1);
+          // hata durumunda da ayni ilke gecerli.
+          setHtml('')
         })
     }, GECIKME_MS)
 
@@ -46,7 +52,12 @@ export default function PreviewPane({ teamId, templateType, content }) {
 
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      {hata && <p style={{ color: '#9c3226', padding: 12, margin: 0 }}>{hata}</p>}
+      {hata && (
+        <div style={{ padding: 12, borderBottom: '1px solid #d9e0e7', background: '#f5dedb' }}>
+          <p style={{ color: '#9c3226', margin: 0, fontWeight: 600 }}>Önizleme üretilemedi</p>
+          <p style={{ color: '#9c3226', margin: '4px 0 0', fontSize: 13.5 }}>{hata}</p>
+        </div>
+      )}
       <iframe
         title="Mail önizlemesi"
         srcDoc={html}
