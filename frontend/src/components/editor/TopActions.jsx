@@ -8,12 +8,33 @@
 // urettigi metin. Yazdirmak icin ikinci bir HTML kurulmaz (Kural 1).
 
 import { useState } from 'react'
-import { fetchEml, logDownload } from '../../lib/apiClient.js'
+import { fetchEml, logDownload, renderClipboard } from '../../lib/apiClient.js'
 import Button from '../shared/Button.jsx'
+
+/**
+ * Panonun DUZ METIN karsiligi.
+ *
+ * HTML kabul etmeyen hedeflere (Not Defteri, sohbet kutulari) yapistirinca
+ * hicbir sey cikmasin diye. Tarayicinin kendi ayristiricisini kullaniyoruz -
+ * elle regex ile etiket soymak ic ice tablolarda yanlis sonuc verir.
+ */
+function duzMetin(html) {
+  try {
+    const belge = new DOMParser().parseFromString(html, 'text/html')
+    return (belge.body?.innerText ?? belge.body?.textContent ?? '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  } catch {
+    return ''
+  }
+}
 
 export default function TopActions({
   taslak,
   belge,
+  teamId,
+  templateType,
+  content,
   kaydediliyor,
   kaydedilmemis,
   hazir,
@@ -21,7 +42,59 @@ export default function TopActions({
   onKaydet,
 }) {
   const [indiriliyor, setIndiriliyor] = useState(false)
+  const [kopyalaniyor, setKopyalaniyor] = useState(false)
+  const [kopyalandi, setKopyalandi] = useState(false)
   const [hata, setHata] = useState(null)
+
+  /**
+   * "Outlook İçin Kopyala" - maili PANOYA koyar, kullanıcı Outlook'ta
+   * yeni mail açıp yapıştırır.
+   *
+   * Panoya HTML olarak konuyor (text/html); düz metin karşılığı da
+   * ekleniyor, çünkü bazı hedefler (Not Defteri, sohbet kutuları) HTML
+   * kabul etmiyor ve o zaman hiçbir şey yapışmıyor.
+   *
+   * DİKKAT: kaydedilmemiş değişiklikleri de kopyalar - .eml'den farklı
+   * olarak sunucudaki kayıtlı sürümü değil, ekranda gördüğünü verir.
+   */
+  async function panoyaKopyala() {
+    setHata(null)
+    setKopyalandi(false)
+
+    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+      setHata('Tarayıcınız panoya HTML kopyalamayı desteklemiyor. "Outlook Maili İndir" kullanın.')
+      return
+    }
+
+    setKopyalaniyor(true)
+    try {
+      const html = await renderClipboard({ teamId, templateType, content })
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([duzMetin(html)], { type: 'text/plain' }),
+        }),
+      ])
+      setKopyalandi(true)
+      // Onay iki saniye gorunsun, sonra dugme normale donsun.
+      setTimeout(() => setKopyalandi(false), 2000)
+
+      if (belge) {
+        logDownload(belge.id, 'KOPYALA').catch(() => {
+          // olcum kaydi; kullaniciyi ilgilendirmiyor
+        })
+      }
+    } catch (e) {
+      // Pano izni reddedilmis olabilir - kullaniciya yolu gosterelim.
+      setHata(
+        e.name === 'NotAllowedError'
+          ? 'Tarayıcı panoya erişime izin vermedi. Sayfaya bir kez tıklayıp tekrar deneyin.'
+          : e.message
+      )
+    } finally {
+      setKopyalaniyor(false)
+    }
+  }
 
   async function emlIndir() {
     setHata(null)
@@ -94,9 +167,12 @@ export default function TopActions({
 
     // Pencereyi kapatmiyoruz: kullanici yazdirmayi iptal edip tekrar
     // deneyebilir ya da PDF olarak kaydetme yerini secebilir.
-    logDownload(belge.id, 'PDF').catch(() => {
-      // olcum kaydi; kullaniciyi ilgilendirmiyor
-    })
+    // Taslakta belge yok - olculecek bir kayit da yok.
+    if (belge) {
+      logDownload(belge.id, 'PDF').catch(() => {
+        // olcum kaydi; kullaniciyi ilgilendirmiyor
+      })
+    }
   }
 
   return (
@@ -127,6 +203,10 @@ export default function TopActions({
           }
         >
           {indiriliyor ? 'Hazırlanıyor…' : 'Outlook Maili İndir'}
+        </Button>
+
+        <Button onClick={panoyaKopyala} disabled={!hazir || kopyalaniyor}>
+          {kopyalandi ? '✓ Kopyalandı' : kopyalaniyor ? 'Hazırlanıyor…' : 'Outlook İçin Kopyala'}
         </Button>
 
         <Button onClick={yazdir} disabled={!onizlemeHtml}>

@@ -25,6 +25,20 @@ import { ROW_FIELD_LABELS } from "./mailContent.js";
 /** Sunucunun mail HTML'ine bastığı nitelik. Sözleşme değişirse burası. */
 export const ALAN_NITELIGI = "data-alan";
 
+/**
+ * Sabit seçenekli alanlarda seçenek listesi: "Bekliyor|Devam Ediyor|..."
+ * Liste SUNUCUDAN geliyor - burada ikinci kez yazılmıyor, yoksa iki liste
+ * zamanla ayrışır (Yönetici Özeti sayacı "Tamamlandı" metnine bakıyor).
+ */
+export const SECENEK_NITELIGI = "data-secenekler";
+
+/** data-secenekler niteliğini diziye çevirir. Yoksa null. */
+export function secenekleriCoz(deger) {
+  if (!deger) return null;
+  const liste = deger.split("|").filter(Boolean);
+  return liste.length > 0 ? liste : null;
+}
+
 /** Tek satırlık input yerine textarea açılacak alanlar. */
 const COK_SATIRLI_ALANLAR = ["note", "expected", "summary", "stake", "text"];
 
@@ -109,6 +123,73 @@ export function alanEtiketi(adres) {
     return `${satirNo}. satır · ${alanAdi}`;
   }
   return ROW_FIELD_LABELS[son] ?? son;
+}
+
+/**
+ * Adres bir SATIRIN kendisini mi gösteriyor?
+ *
+ * Sunucu her satırın <tr>'sine de adres basıyor (sections.<key>.rows.<i>),
+ * hücrelere ise alan adresi (sections.<key>.rows.<i>.<field>). Satır adresi
+ * bir NESNEYİ gösterir; düzenleme kutusu açılırsa "[object Object]" yazar ve
+ * kaydedilirse satırın tamamı bir metinle ezilir. O yüzden satır adresi
+ * düzenlemeye değil, satır araçlarına (ekle/sil/sırala) gider.
+ */
+export function satirAdresiMi(adres) {
+  return /^sections\.[^.]+\.rows\.\d+$/.test(adres);
+}
+
+/** Satır adresini bölüm adresi + indeks olarak ayırır. */
+function satirAyristir(adres) {
+  const parcalar = adres.split(".");
+  return { bolumAdresi: `${parcalar[0]}.${parcalar[1]}.rows`, index: Number(parcalar[3]) };
+}
+
+/**
+ * Satır işlemleri - hepsi YENİ içerik döndürür, yerinde değiştirmez.
+ * islem: 'ekle' | 'kopyala' | 'yukari' | 'asagi' | 'sil'
+ */
+export function satirIslemi(content, adres, islem, bosSatir) {
+  if (!satirAdresiMi(adres)) return content;
+  const { bolumAdresi, index } = satirAyristir(adres);
+  const satirlar = alandanOku(content, bolumAdresi);
+  if (!Array.isArray(satirlar)) return content;
+
+  const yeni = [...satirlar];
+  switch (islem) {
+    case "ekle":
+      yeni.splice(index + 1, 0, bosSatir);
+      break;
+    case "kopyala":
+      yeni.splice(index + 1, 0, { ...satirlar[index] });
+      break;
+    case "yukari":
+      if (index === 0) return content;
+      [yeni[index - 1], yeni[index]] = [yeni[index], yeni[index - 1]];
+      break;
+    case "asagi":
+      if (index >= satirlar.length - 1) return content;
+      [yeni[index], yeni[index + 1]] = [yeni[index + 1], yeni[index]];
+      break;
+    case "sil":
+      yeni.splice(index, 1);
+      break;
+    default:
+      return content;
+  }
+  return alanaYaz(content, bolumAdresi, yeni);
+}
+
+/** Satırın bulunduğu bölümdeki satır sayısı - ilk/son satırı anlamak için. */
+export function satirSayisi(content, adres) {
+  if (!satirAdresiMi(adres)) return 0;
+  const { bolumAdresi } = satirAyristir(adres);
+  const satirlar = alandanOku(content, bolumAdresi);
+  return Array.isArray(satirlar) ? satirlar.length : 0;
+}
+
+/** Satır adresindeki indeks. */
+export function satirIndeksi(adres) {
+  return satirAdresiMi(adres) ? satirAyristir(adres).index : -1;
 }
 
 /** Bu alan çok satırlı mı - textarea mı input mu açılacak. */

@@ -6,6 +6,7 @@ import com.aksa.mailer.document.port.in.ManageMailerDocumentsUseCase;
 import com.aksa.mailer.render.api.dto.PreviewRequest;
 import com.aksa.mailer.render.usecase.EmlBuilder;
 import com.aksa.mailer.render.usecase.MailHtmlRenderer;
+import com.aksa.mailer.render.usecase.DuzenlemeAdresleri;
 import com.aksa.mailer.render.usecase.OnizlemeGorselleri;
 import com.aksa.mailer.team.port.in.GetTeamsUseCase;
 import jakarta.validation.Valid;
@@ -40,15 +41,18 @@ public class RenderController {
     private final MailHtmlRenderer renderer;
     private final EmlBuilder emlBuilder;
     private final OnizlemeGorselleri onizlemeGorselleri;
+    private final DuzenlemeAdresleri duzenlemeAdresleri;
     private final ManageMailerDocumentsUseCase documents;
     private final GetTeamsUseCase teams;
 
     public RenderController(MailHtmlRenderer renderer, EmlBuilder emlBuilder,
                             OnizlemeGorselleri onizlemeGorselleri,
+                            DuzenlemeAdresleri duzenlemeAdresleri,
                             ManageMailerDocumentsUseCase documents, GetTeamsUseCase teams) {
         this.renderer = renderer;
         this.emlBuilder = emlBuilder;
         this.onizlemeGorselleri = onizlemeGorselleri;
+        this.duzenlemeAdresleri = duzenlemeAdresleri;
         this.documents = documents;
         this.teams = teams;
     }
@@ -56,10 +60,17 @@ public class RenderController {
     /**
      * Govdedeki JSON'u HTML'e cevirir. Istemci bunu oldugu gibi iframe'e basar.
      *
-     * Uretilen HTML .eml'e giden HTML'in AYNISIDIR; tek fark gorsel
-     * referanslari: tarayici cid: adresini cozemedigi icin ayni dosyalarin
-     * base64 hali gomulur (bkz. OnizlemeGorselleri). Ikinci bir HTML uretimi
-     * degildir - duzenin tek kaynagi hala MailHtmlRenderer.
+     * Uretilen HTML .eml'e giden HTML'in AYNISIDIR; IKI fark var ve ikisi de
+     * tek noktada, adlandirilmis ve duman testleriyle cift yonlu kilitli:
+     *
+     *   1. Gorsel referanslari - tarayici cid: adresini cozemedigi icin ayni
+     *      dosyalarin base64 hali gomulur (OnizlemeGorselleri).
+     *   2. Duzenleme adresleri - onizlemede kalir, .eml'de soyulur
+     *      (DuzenlemeAdresleri, export ucunda).
+     *
+     * Ikisi de ikinci bir HTML URETIMI DEGIL: duzenin tek kaynagi hala
+     * MailHtmlRenderer. Fark sayisi ikidir ve oyle kalmalidir - sessizce
+     * artarsa iki prototipte de yasanan hataya donulur (Mimari Kural 1).
      */
     @PostMapping(value = "/render/preview", produces = MediaType.TEXT_HTML_VALUE + ";charset=UTF-8")
     public String onizleme(@Valid @RequestBody PreviewRequest istek, Authentication authentication) {
@@ -71,6 +82,27 @@ public class RenderController {
         return onizlemeGorselleri.gomulu(html, renderer.tema(themeKey));
     }
 
+    /**
+     * "Outlook İçin Kopyala" - panoya konacak HTML.
+     *
+     * Onizlemeden TEK farki duzenleme nitelikleri: burada soyuluyor. Kullanici
+     * bunu Outlook taslagina yapistiracak; editor icin var olan nitelikler
+     * oraya tasinmasin.
+     *
+     * Gorseller data: URI ile gomulu geliyor - cid: pano uzerinden calismaz,
+     * MIME kabi yok. Outlook masaustunun data: URI'yi nasil ele aldigi
+     * surume gore degisiyor; GARANTI yol .eml indirmektir (bir sonraki uc).
+     * Bu uc kolaylik icin: acik bir taslaga yapistirmak istendiginde.
+     */
+    @PostMapping(value = "/render/clipboard", produces = MediaType.TEXT_HTML_VALUE + ";charset=UTF-8")
+    public String panoyaKopyala(@Valid @RequestBody PreviewRequest istek, Authentication authentication) {
+        OturumKullanicisi.of(authentication).dogrula(istek.teamId());
+        String themeKey = teams.takim(istek.teamId()).themeKey();
+        String html = duzenlemeAdresleri.soy(
+                renderer.uret(istek.content(), istek.templateType(), themeKey));
+        return onizlemeGorselleri.gomulu(html, renderer.tema(themeKey));
+    }
+
     /** "Outlook Maili İndir" - message/rfc822, gorseller cid: ile gomulu. */
     @GetMapping("/documents/{id}/export.eml")
     public ResponseEntity<Resource> emlIndir(@PathVariable Long id, Authentication authentication) {
@@ -78,7 +110,10 @@ public class RenderController {
         OturumKullanicisi.of(authentication).dogrula(belge.teamId());
         String themeKey = teams.takim(belge.teamId()).themeKey();
 
-        String html = renderer.uret(belge.content(), belge.templateType(), themeKey);
+        // Duzenleme adresleri YALNIZCA onizleme icindir - Outlook'a giden
+        // mailde yalnizca editor icin var olan nitelik tasinmasin.
+        String html = duzenlemeAdresleri.soy(
+                renderer.uret(belge.content(), belge.templateType(), themeKey));
         String konu = belge.subject() != null && !belge.subject().isBlank()
                 ? belge.subject()
                 : belge.title();

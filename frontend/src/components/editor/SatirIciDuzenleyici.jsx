@@ -14,6 +14,7 @@ export default function SatirIciDuzenleyici({
   deger,
   kutu,
   cokSatirli,
+  secenekler,
   onDegisti,
   onBitti,
   onVazgec,
@@ -26,7 +27,8 @@ export default function SatirIciDuzenleyici({
     const giris = girisRef.current
     if (!giris) return
     giris.focus()
-    giris.select()
+    // select() yalnizca metin girislerinde var - <select> elemaninda yok.
+    giris.select?.()
   }, [])
 
   function tusaBasildi(e) {
@@ -64,10 +66,28 @@ export default function SatirIciDuzenleyici({
       <div className="satir-ici__etiket">
         {etiket}
         <span className="satir-ici__ipucu">
-          {cokSatirli ? 'Ctrl+Enter kaydeder · Esc vazgeçer' : 'Enter kaydeder · Esc vazgeçer'}
+          {secenekler
+            ? 'Seçin · Esc vazgeçer'
+            : cokSatirli
+              ? 'Ctrl+Enter kaydeder · Esc vazgeçer'
+              : 'Enter kaydeder · Esc vazgeçer'}
         </span>
       </div>
-      {cokSatirli ? (
+
+      {/* Seçenek listesi SUNUCUDAN geliyor (data-secenekler); istemcide ikinci
+          kez yazılmıyor - iki liste zamanla ayrışır ve mail sayacı metne
+          bakıyor. Kayıtlı değer listede yoksa kaybolmasın diye başa eklenir. */}
+      {secenekler ? (
+        <select {...ortak}>
+          <option value="">—</option>
+          {deger && !secenekler.includes(deger) && <option value={deger}>{deger}</option>}
+          {secenekler.map((secenek) => (
+            <option key={secenek} value={secenek}>
+              {secenek}
+            </option>
+          ))}
+        </select>
+      ) : cokSatirli ? (
         <textarea rows={3} {...ortak} />
       ) : (
         <input type="text" {...ortak} />

@@ -132,6 +132,73 @@ kontrol "varsayilan bolumler geldi" 2 "$(echo "$OLUSAN" | alan content.sections.
 kontrol "baslik Turkce karakterleri korudu" "[DUMAN TESTİ] Ağustos 2026 Sprint Kapanışı" \
   "$(echo "$OLUSAN" | alan title)"
 
+# Yeni belge KENDI kuralini gecmeli. header bos dogsaydi belge, dogdugu anda
+# PUT ve onizlemenin zorunlu tuttugu alanlari ihlal ederdi; kullanici tek harf
+# yazmadan onizlemede 400 gorurdu - yasandi.
+kontrol "yeni belgenin basligi takim adindan turetildi" "RPA SPRINT BİLGİLENDİRME" \
+  "$(echo "$OLUSAN" | alan content.header.title)"
+kontrol "yeni belgenin takim etiketi dolu" "RPA Takımı" \
+  "$(echo "$OLUSAN" | alan content.header.teamLabel)"
+
+# Asil kanit: taslak, hic dokunulmadan onizlenebiliyor mu.
+#
+# DIKKAT: node'a govdeyi <(...) sureç ikamesiyle VERME. Git Bash onu
+# /proc/N/fd/M yoluna cevirir, Windows'taki node o yolu acamaz ve dosya BOS
+# kalir - istek de "request body is missing" ile 400 doner. Stdin guvenli.
+printf '%s' "$OLUSAN" > "$GECICI/olusan.json"
+printf '%s' "$OLUSAN" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+  const b=JSON.parse(s);
+  process.stdout.write(JSON.stringify({teamId:b.teamId,templateType:b.templateType,content:b.content}));
+})' > "$GECICI/taze-onizleme.json"
+kontrol "dokunulmamis taslak onizlenebilir" 200 \
+  "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+      -H 'Content-Type: application/json; charset=UTF-8' \
+      --data-binary "@$GECICI/taze-onizleme.json" "$TABAN/api/mailer/render/preview")"
+
+# GET /documents/default - arayuz acilista bu icerigi cizer, ortada belge YOK.
+# Ucun POST'un urettiginin AYNISINI donmesi sart: ayrisirlarsa kullanici
+# ekranda bir sey gorup baska bir sey kaydeder.
+curl -s -b "$CEREZ" "$TABAN/api/mailer/documents/default?teamId=1&templateType=KAPANIS" \
+  > "$GECICI/varsayilan.json"
+kontrol "varsayilan icerik ucu calisiyor" "RPA SPRINT BİLGİLENDİRME" \
+  "$(alan header.title < "$GECICI/varsayilan.json")"
+kontrol "varsayilan icerik POST'un urettiginin aynisi" "ayni" \
+  "$(node -e '
+const fs = require("fs");
+const a = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+const b = JSON.parse(fs.readFileSync(process.argv[2], "utf8")).content;
+console.log(JSON.stringify(a) === JSON.stringify(b) ? "ayni" : "AYRISMIS");
+' "$GECICI/varsayilan.json" "$GECICI/olusan.json")"
+
+kontrol "yetkisiz takimin varsayilani sorulamaz" 403 \
+  "$(kod -b "$BASKA" "$TABAN/api/mailer/documents/default?teamId=1&templateType=KAPANIS")"
+
+# Olmayan takim icin PO 403 alir, 404 DEGIL - ve bu dogru sira: yetki kapisi
+# takim varligindan once kapanmasaydi, yetkisiz biri 404/403 farkindan hangi
+# takimlarin var oldugunu cikarabilirdi. 404'u yalnizca ADMIN gorur.
+YONETICI="$(node "$KOK/scripts/mint-jwt.js" "$SECRET" 10000 ADMIN)"
+kontrol "olmayan takimin varsayilani PO'ya sizdirilmaz" 403 \
+  "$(kod -b "$CEREZ" "$TABAN/api/mailer/documents/default?teamId=99999&templateType=KAPANIS")"
+kontrol "olmayan takimin varsayilani yok (yonetici)" 404 \
+  "$(kod -b "access_token=$YONETICI" "$TABAN/api/mailer/documents/default?teamId=99999&templateType=KAPANIS")"
+kontrol "gecersiz mail tipi 400" 400 \
+  "$(kod -b "$CEREZ" "$TABAN/api/mailer/documents/default?teamId=1&templateType=OLMAYAN")"
+
+# Asil iddia: bu uc HICBIR SEY YAZMIYOR. Yazsaydi uygulama her acildiginda bir
+# "Yeni mail" taslagi dusup Belgelerim listesi cope donerdi.
+ONCE="$(curl -s -b "$CEREZ" "$TABAN/api/mailer/documents?teamId=1" | alan length)"
+curl -s -o /dev/null -b "$CEREZ" "$TABAN/api/mailer/documents/default?teamId=1&templateType=KAPANIS"
+curl -s -o /dev/null -b "$CEREZ" "$TABAN/api/mailer/documents/default?teamId=1&templateType=PLANLAMA"
+kontrol "varsayilan icerik sormak belge yaratmaz" "$ONCE" \
+  "$(curl -s -b "$CEREZ" "$TABAN/api/mailer/documents?teamId=1" | alan length)"
+
+# Ayni sey olusturmada da gecerli; YONETICI yukarida uretildi.
+kontrol "olmayan takimla belge acilmaz (yonetici)" 404 \
+  "$(kod -X POST -b "access_token=$YONETICI; XSRF-TOKEN=$CSRF" -H "X-CSRF-Token: $CSRF" \
+      -H 'Content-Type: application/json' \
+      -d '{"teamId":99999,"templateType":"KAPANIS","title":"hayalet"}' \
+      "$TABAN/api/mailer/documents")"
+
 cat > "$GECICI/kaydet.json" <<'JSON'
 {"title":"[DUMAN TESTİ] Ağustos 2026 Sprint Kapanışı","subject":"Sprint Bilgilendirme","expectedVersion":1,
  "content":{"schemaVersion":1,
@@ -171,7 +238,9 @@ kontrol "versiyon gecmisi iki satir" 2 \
 GERI="$(curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
   "$TABAN/api/mailer/documents/$ID/versions/1/rollback")"
 kontrol "geri alma yeni surum yazar" 3 "$(echo "$GERI" | alan currentVersion)"
-kontrol "geri alinan icerik eski surumun icerigi" "" \
+# Surum 1 = belgenin DOGDUGU icerik. Geri alinca o baslik geri gelmeli.
+# Eskiden header bos dogdugu icin burada bos dize bekleniyordu.
+kontrol "geri alinan icerik eski surumun icerigi" "RPA SPRINT BİLGİLENDİRME" \
   "$(echo "$GERI" | alan content.header.title)"
 
 kontrol "olmayan belge 404" 404 "$(kod -b "$CEREZ" "$TABAN/api/mailer/documents/999999")"
@@ -249,12 +318,75 @@ kontrol "disari aktarim oncesi kayit" 200 \
 kontrol "olmayan belge disari aktarilamaz" 404 \
   "$(kod -b "$CEREZ" "$TABAN/api/mailer/documents/999999/export.eml")"
 
-# Yonetici Ozeti Sprint 2'de gelecek. O zamana kadar sessizce yanlis sablon
-# uretmek yerine acikca hata vermeli.
-kontrol "hazir olmayan mail tipi onizlenemez" 400 \
-  "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
-      -d '{"teamId":1,"templateType":"YONETICI_OZETI","content":{"schemaVersion":1,"header":{"title":"x","period":"","teamLabel":"y"},"meeting":{"date":"","time":"","place":""},"intro":[],"sections":[],"notes":[],"footer":{"line1":"","line2":""}}}' \
-      "$TABAN/api/mailer/render/preview")"
+# --- Yonetici Ozeti ---------------------------------------------------------
+# Uc tablo + kart bloku. Sayaclari SUNUCU hesapliyor; icerikteki satirlardan
+# turetilen dort sayiyi de dogruluyoruz - istemci gonderemedigi icin burada
+# kirilirsa ekrandaki sayi ile maildeki sayi ayrisir demektir.
+cat > "$GECICI/yonetici.json" <<'JSON'
+{"teamId":1,"templateType":"YONETICI_OZETI","content":{"schemaVersion":1,
+ "header":{"title":"DİJİTAL UYGULAMALAR SPRİNT DEĞERLENDİRME TOPLANTI ÖZETİ","period":"16.09.2026 · TOPLANTI SONU","teamLabel":"Dijital Uygulamalar Takımı"},
+ "meeting":{"date":"16.09.2026","time":"10:00","place":"Microsoft Teams"},
+ "intro":["Toplantıda görüşülen konular aşağıda bilgilerinize sunulmuştur."],
+ "sections":[
+  {"key":"discussed","title":"GÖRÜŞÜLEN KONULAR","tone":"blue","columns":["team","topic","detail"],
+   "rows":[{"team":"RPA","topic":"Fatura İtiraz Süreci","detail":"MBS verilerinin veri tabanından alınabilmesi değerlendirildi."},
+           {"team":"Ürün Geliştirme","topic":"Müşteri Portalı","detail":"Yeni talep akışının mevcut durumu paylaşıldı."},
+           {"team":"CBS","topic":"Harita Servisleri","detail":"Servis entegrasyonunun güncel durumu değerlendirildi."}]},
+  {"key":"decisions","title":"ALINAN KARARLAR","tone":"green","columns":["no","decision","team"],
+   "rows":[{"no":"","decision":"Fatura İtiraz sürecinin mevcut kapsamla devam etmesi","team":"RPA"},
+           {"no":"","decision":"Yeni portal ekranlarının iş birimi değerlendirmesine sunulması","team":"Ürün Geliştirme"}]},
+  {"key":"actions","title":"BEKLEYEN KONULAR VE AKSİYONLAR","tone":"orange","columns":["team","pending","owner","due","status"],
+   "rows":[{"team":"RPA","pending":"MBS alanlarının incelenmesi","owner":"Ali Osman Bey","due":"05.09.2026","status":"Bekliyor"},
+           {"team":"CBS","pending":"Servis bilgilerinin paylaşılması","owner":"CBS Ekibi","due":"07.09.2026","status":"Tamamlandı"}]},
+  {"key":"links","title":"İNCELEME VE ERİŞİM BAĞLANTILARI","tone":"blue","columns":["linkType","title","description","button","url"],
+   "rows":[{"linkType":"Uygulama","title":"Müşteri Portalı","description":"Güncel ekranları inceleyin.","button":"Uygulamayı Aç","url":"https://example.local/portal"},
+           {"linkType":"Dashboard","title":"Sprint Dashboardu","description":"Göstergeleri görüntüleyin.","button":"Dashboardu Aç","url":"https://example.local/dashboard"},
+           {"linkType":"Doküman","title":"Süreç Dokümanı","description":"Analiz detaylarını inceleyin.","button":"","url":""}]}],
+ "notes":[{"tone":"green","text":"Kritik konular ilgili yöneticilerle ayrıca değerlendirilecektir."}],
+ "footer":{"line1":"Bilgilerinize sunar,","line2":"iyi çalışmalar dileriz!"}}}
+JSON
+
+YONETICI="$(curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+  -H 'Content-Type: application/json; charset=UTF-8' \
+  --data-binary "@$GECICI/yonetici.json" "$TABAN/api/mailer/render/preview")"
+printf '%s' "$YONETICI" > "$GECICI/yonetici.html"
+
+kontrol "yonetici ozeti uretiliyor" "var" \
+  "$(grep -q 'GÖRÜŞÜLEN KONULAR' "$GECICI/yonetici.html" && echo var || echo yok)"
+kontrol "uc tablo da basildi" "var" \
+  "$(grep -q 'ALINAN KARARLAR' "$GECICI/yonetici.html" \
+     && grep -q 'BEKLEYEN KONULAR VE AKSİYONLAR' "$GECICI/yonetici.html" && echo var || echo yok)"
+
+# Sayaclar: 3 tekrarsiz ekip, 3 gorusulen konu, 2 karar, 1 bekleyen
+# (ikinci aksiyon "Tamamlandı" oldugu icin sayilmaz).
+sayac() {
+  node -e '
+const fs=require("fs");
+const html=fs.readFileSync(process.argv[1],"utf8");
+const m=html.match(new RegExp(">(\\d+)</b><br><span[^>]*>"+process.argv[2]+"<"));
+console.log(m?m[1]:"BULUNAMADI");
+' "$GECICI/yonetici.html" "$1"
+}
+kontrol "sayac: yer alan ekip" 3 "$(sayac 'YER ALAN EKİP')"
+kontrol "sayac: gorusulen konu" 3 "$(sayac 'GÖRÜŞÜLEN KONU')"
+kontrol "sayac: alinan karar" 2 "$(sayac 'ALINAN KARAR')"
+kontrol "sayac: bekleyen konu (tamamlanan sayilmaz)" 1 "$(sayac 'BEKLEYEN KONU')"
+
+# Karar numaralari cizerken uretiliyor: icerikte "no" bos geldi.
+kontrol "karar numaralari otomatik" "var" \
+  "$(grep -q 'K-01' "$GECICI/yonetici.html" && grep -q 'K-02' "$GECICI/yonetici.html" && echo var || echo yok)"
+
+# Turuncu ton: yeni eklendi, tema cozuyor - icerik renk kodu gondermedi.
+kontrol "turuncu ton temadan cozuldu" "var" \
+  "$(grep -qi '#db6c12' "$GECICI/yonetici.html" && echo var || echo yok)"
+
+# URL'siz kart buton CIZMEMELI - tiklanip hicbir sey olmayan buton en kotusu.
+kontrol "baglanti butonlari yalnizca URL varsa" 2 \
+  "$(grep -o 'example.local' "$GECICI/yonetici.html" | wc -l | tr -d ' ')"
+
+kontrol "yonetici ozetinde yasak CSS yok" "temiz" \
+  "$(grep -Eqi 'display:[ ]*(flex|grid)|position:[ ]*(absolute|fixed)|border-radius|linear-gradient' \
+      "$GECICI/yonetici.html" && echo KIRLI || echo temiz)"
 
 # Planlama artik uretiliyor - regresyon kontrolu.
 PLAN="$(curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
@@ -297,6 +429,74 @@ kontrol "eml govdesi cid: kullaniyor" "var" \
   "$(echo "$EML_HTML" | grep -qF 'src="cid:hero"' && echo var || echo yok)"
 kontrol "eml govdesinde data: URI yok" "temiz" \
   "$(echo "$EML_HTML" | grep -qF 'data:image/' && echo kirli || echo temiz)"
+
+# Onizleme ile mail arasindaki IKINCI fark: duzenleme adresleri. Onizlemede
+# OLMALI (arayuz onlarla calisiyor), .eml'de OLMAMALI (Outlook'a giden mailde
+# yalnizca editor icin var olan nitelik tasinmasin). Iki yonu de tutuyoruz -
+# korkulacak sey farkin sayisi degil, sessizce artmasi.
+kontrol "eml govdesinde duzenleme adresi yok" "temiz" \
+  "$(echo "$EML_HTML" | grep -qF 'data-alan' && echo KIRLI || echo temiz)"
+kontrol "onizlemede duzenleme adresi var" "var" \
+  "$(grep -qF 'data-alan="header.title"' "$GECICI/yonetici.html" && echo var || echo yok)"
+kontrol "onizlemede satir adresleri var" "var" \
+  "$(grep -qF 'data-alan="sections.discussed.rows.0.topic"' "$GECICI/yonetici.html" \
+     && echo var || echo yok)"
+# Bolum indeksle degil ANAHTARLA adresleniyor: kullanici bolum ekleyip
+# silince indeks kayar, anahtar kaymaz.
+kontrol "bolum adresi anahtar tasiyor" "temiz" \
+  "$(grep -qE 'data-alan="sections\.[0-9]+\.' "$GECICI/yonetici.html" && echo KIRLI || echo temiz)"
+
+# Karar numarasi cizerken uretiliyor, icerikte karsiligi BOS. Adres tasisaydi
+# kullanici K-01'e tiklayip yazar, sonraki cizimde sunucu yazdigini ezerdi.
+kontrol "uretilen sutun adres tasimaz" "temiz" \
+  "$(grep -qF 'data-alan="sections.decisions.rows.0.no"' "$GECICI/yonetici.html" \
+     && echo KIRLI || echo temiz)"
+kontrol "ayni satirin diger sutunlari duzenlenebilir" "var" \
+  "$(grep -qF 'data-alan="sections.decisions.rows.0.decision"' "$GECICI/yonetici.html" \
+     && echo var || echo yok)"
+
+# Satirin kendisi de adresli: arayuz ekleme/silme/siralama dugmelerini
+# bunun uzerine konumlandiriyor, hucrelerden cikarim yapmiyor.
+kontrol "satir capasi basiliyor" "var" \
+  "$(grep -qF '<tr data-alan="sections.discussed.rows.0">' "$GECICI/yonetici.html" \
+     && echo var || echo yok)"
+# Sabit secenekli sutun listeyi kendisi bildiriyor - arayuz ikinci kez yazmasin.
+kontrol "durum secenekleri sunucudan geliyor" "var" \
+  "$(grep -qF 'data-secenekler="Bekliyor|Devam Ediyor|Karar Bekliyor|Tamamlandı"' \
+      "$GECICI/yonetici.html" && echo var || echo yok)"
+
+# --- Outlook icin kopyala ---------------------------------------------------
+# Panoya giden HTML: gorseller gomulu (cid: pano uzerinden calismaz), ama
+# duzenleme nitelikleri YOK - kullanici bunu Outlook taslagina yapistiracak.
+curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+  -H 'Content-Type: application/json; charset=UTF-8' \
+  --data-binary "@$GECICI/yonetici.json" "$TABAN/api/mailer/render/clipboard" \
+  > "$GECICI/pano.html"
+
+kontrol "pano HTML'i uretiliyor" "var" \
+  "$(grep -q 'GÖRÜŞÜLEN KONULAR' "$GECICI/pano.html" && echo var || echo yok)"
+kontrol "pano HTML'inde duzenleme niteligi yok" "temiz" \
+  "$(grep -q 'data-' "$GECICI/pano.html" && echo KIRLI || echo temiz)"
+kontrol "pano HTML'inde gorseller gomulu" "var" \
+  "$(grep -qF 'data:image/' "$GECICI/pano.html" && echo var || echo yok)"
+kontrol "pano HTML'inde cozulmemis cid: kalmaz" "temiz" \
+  "$(grep -qF 'src="cid:' "$GECICI/pano.html" && echo KIRLI || echo temiz)"
+kontrol "yetkisiz takim adina pano uretilemez" 403 \
+  "$(kod -X POST -b "$BASKA; XSRF-TOKEN=$CSRF" -H "X-CSRF-Token: $CSRF" \
+      -H 'Content-Type: application/json; charset=UTF-8' \
+      --data-binary "@$GECICI/yonetici.json" "$TABAN/api/mailer/render/clipboard")"
+
+# --- Giris sayfasi: son belgeler --------------------------------------------
+# Kullanicinin BUTUN takimlarinin belgeleri tek istekte - bir PO'nun birden
+# cok takimi olabiliyor, giris sayfasi N istek atmasin.
+kontrol "son belgeler ucu calisiyor" 200 \
+  "$(kod -b "$CEREZ" "$TABAN/api/mailer/documents/recent")"
+kontrol "son belgeler takim bilgisi tasiyor" "var" \
+  "$(curl -s -b "$CEREZ" "$TABAN/api/mailer/documents/recent" \
+     | grep -q '"templateType"' && echo var || echo yok)"
+# Limit sunucuda sinirli: istemci butun tabloyu cekemez.
+kontrol "son belgeler limiti asilamaz" 200 \
+  "$(kod -b "$CEREZ" "$TABAN/api/mailer/documents/recent?limit=100000")"
 
 kontrol "indirme logu kaydediliyor" 204 \
   "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \

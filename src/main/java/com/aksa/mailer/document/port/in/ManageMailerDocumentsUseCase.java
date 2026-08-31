@@ -15,9 +15,35 @@ public interface ManageMailerDocumentsUseCase {
 
     List<DocumentSummary> takimBelgeleri(Long teamId);
 
+    /**
+     * Kullanicinin erisebildigi BUTUN takimlarin belgeleri, en yeni once.
+     *
+     * Giris sayfasindaki "Son Taslaklarim" icin. takimBelgeleri() tek takim
+     * istiyor ama bir PO'nun birden cok takimi olabiliyor; arayuz her takim
+     * icin ayri istek atmasin diye tek uc.
+     *
+     * Gruplama (Kapanis / Planlama / Yonetici Ozeti) ISTEMCIDE yapilir -
+     * templateType zaten ozetle geliyor ve sunucunun uc ayri liste dondurmesi
+     * "son N kayit" anlamini bozardi.
+     */
+    List<DocumentSummary> sonBelgeler(List<Long> teamIds, int limit);
+
     MailerDocument getir(Long id);
 
     MailerDocument olustur(NewDocumentCommand komut);
+
+    /**
+     * Bir belge OLUSTURULSAYDI icerigi ne olurdu - hicbir sey yazmadan.
+     *
+     * Arayuz, uygulama acilir acilmaz sag taraftaki mail sablonunu bosken de
+     * cizebilsin diye var. Bunun yerine her acilista POST /documents
+     * cagrilsaydi terk edilen "Yeni mail" taslaklari birikirdi; iskelet
+     * istemcide kurulsaydi varsayilan icerigin IKINCI bir tanimi olur ve
+     * zamanla bundan ayrisirdi.
+     *
+     * olustur() ile AYNI metodu cagirir - ikisinin ayrisma ihtimali yok.
+     */
+    MailContent varsayilanIcerik(Long teamId, TemplateType templateType);
 
     MailerDocument kaydet(SaveDocumentCommand komut);
 

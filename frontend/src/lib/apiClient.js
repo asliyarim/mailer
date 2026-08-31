@@ -252,6 +252,23 @@ export async function renderPreview({ teamId, templateType, content }) {
 }
 
 /**
+ * "Outlook Icin Kopyala" - panoya konacak HTML (docs/api.md).
+ *
+ * Onizlemeden tek farki duzenleme niteliklerinin (data-alan,
+ * data-secenekler) soyulmus olmasi: panoya yapistirilan sey gercek mail
+ * olmali, editor izleri tasimamali. Gorseller data: URI ile gomulu -
+ * cid: pano uzerinden calismaz, MIME kabi yok.
+ */
+export async function renderClipboard({ teamId, templateType, content }) {
+  const response = await authFetch(
+    "/api/mailer/render/clipboard",
+    jsonInit("POST", { teamId, templateType, content })
+  );
+  await ensureOk(response, "Kopyalanacak mail üretilemedi.");
+  return response.text();
+}
+
+/**
  * Content-Disposition basligindaki dosya adini okur.
  *
  * Sunucu adi BILEREK ASCII'ye indirger (RenderController.dosyaAdi): bazi

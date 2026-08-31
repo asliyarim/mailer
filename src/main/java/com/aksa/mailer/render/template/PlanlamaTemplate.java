@@ -98,9 +98,9 @@ public class PlanlamaTemplate extends MailIskeleti {
             }
             // Kapanis'in aksine gruplama YOK: planlamada konular tek listede,
             // sirasi kullanicinin girdigi sira.
-            Map<String, List<Map<String, String>>> tekGrup = new LinkedHashMap<>();
-            tekGrup.put("", new ArrayList<>(bolum.rows()));
-            tablo(html, bolum.columns(), tekGrup, tema, tema.colors(bolum.tone()));
+            Map<String, List<Satir>> tekGrup = new LinkedHashMap<>();
+            tekGrup.put("", Satir.hepsi(bolum.rows()));
+            tablo(html, bolum.key(), bolum.columns(), tekGrup, tema, tema.colors(bolum.tone()));
         }
     }
 }

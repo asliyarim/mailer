@@ -1011,6 +1011,61 @@ textarea::placeholder {
   padding: 7px 9px;
 }
 
+/* ---------------------------------------------------- satır araçları */
+
+/* Önizlemede seçilen satırın yanındaki araç çubuğu. Referans uygulamada bu
+   düğmeler mailin İÇİNE gömülüydü; bizde olamaz, çünkü mail HTML'i .eml'e
+   olduğu gibi giriyor. Bu yüzden iframe'in dışında, satırın hizasında. */
+.satir-arac {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--lacivert);
+  border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(9, 28, 51, 0.34);
+}
+
+.satir-arac__no {
+  min-width: 18px;
+  margin-right: 4px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.72);
+  font-variant-numeric: tabular-nums;
+}
+
+.satir-arac__dugme {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.satir-arac__dugme:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.satir-arac__dugme--sil:hover:not(:disabled) {
+  background: rgba(220, 90, 76, 0.85);
+}
+
+.satir-arac__dugme:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 /* ------------------------------------------------------------------ modal */
 
 .modal-zemin {

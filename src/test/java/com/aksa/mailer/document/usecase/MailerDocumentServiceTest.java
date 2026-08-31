@@ -4,6 +4,7 @@ import com.aksa.mailer.common.domain.NotFoundException;
 import com.aksa.mailer.common.domain.VersionConflictException;
 import com.aksa.mailer.document.domain.DownloadFormat;
 import com.aksa.mailer.document.domain.MailContent;
+import com.aksa.mailer.document.domain.MailContentValidator;
 import com.aksa.mailer.document.domain.MailSection;
 import com.aksa.mailer.document.domain.MailerDocument;
 import com.aksa.mailer.document.domain.TemplateType;
@@ -12,6 +13,8 @@ import com.aksa.mailer.document.port.in.ManageMailerDocumentsUseCase;
 import com.aksa.mailer.document.port.out.MailerDocumentRepository;
 import com.aksa.mailer.document.port.out.MailerDocumentVersionRepository;
 import com.aksa.mailer.document.port.out.MailerDownloadLogRepository;
+import com.aksa.mailer.team.domain.MailTeam;
+import com.aksa.mailer.team.port.in.GetTeamsUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -46,7 +50,30 @@ class MailerDocumentServiceTest {
         documentRepo = new SahteDocumentRepo();
         versionRepo = new SahteVersionRepo();
         indirmeRepo = new SahteIndirmeRepo();
-        service = new MailerDocumentService(documentRepo, versionRepo, indirmeRepo);
+        service = new MailerDocumentService(documentRepo, versionRepo, indirmeRepo, new SahteTakimlar());
+    }
+
+    /**
+     * 1 numarali takim "RPA Takımı", 5 numarali "Dijital Uygulamalar Takımı".
+     * Baskasi sorulursa NotFoundException - gercek gerceklemenin sozlesmesi bu.
+     */
+    private static final class SahteTakimlar implements GetTeamsUseCase {
+        @Override
+        public List<MailTeam> erisilebilirTakimlar(boolean adminMi, List<Long> teamIds) {
+            return List.of(takim(1L));
+        }
+
+        @Override
+        public MailTeam takim(Long id) {
+            if (id == 1L) {
+                return new MailTeam(1L, "RPA", "RPA Takımı", "rpa", true);
+            }
+            if (id == 5L) {
+                return new MailTeam(5L, "DIJITAL", "Dijital Uygulamalar Takımı",
+                        "dijital-uygulamalar", true);
+            }
+            throw new NotFoundException("Takım bulunamadı: " + id);
+        }
     }
 
     private MailerDocument yeniKapanis() {
@@ -78,6 +105,104 @@ class MailerDocumentServiceTest {
                 .containsExactly("analysis", "development");
         // Olusturma da bir versiyon satiri yazar - gecmis 1'den baslar.
         assertThat(versionRepo.gecmis(taslak.id())).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("yeni taslak KENDI kuralini gecer - dogar dogmaz onizlenebilir")
+    void taslakGecerliDogar() {
+        // Regresyon: header bos dogdugu icin belge, olusturuldugu anda
+        // MailContentValidator'a takiliyordu. Kullanici tek harf yazmadan
+        // onizlemede "Başlık boş olamaz" hatasi goruyordu.
+        assertThatCode(() -> MailContentValidator.dogrula(yeniKapanis().content()))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("başlık ve takım etiketi takımın adından türetilir, sabit değildir")
+    void baslikTakimdanTuretilir() {
+        MailerDocument rpa = yeniKapanis();
+        MailerDocument dijital = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                5L, TemplateType.KAPANIS, "Eylül planlaması", SICIL));
+
+        // "Takımı" sozcugu baslikta atilir, etikette KALIR.
+        assertThat(rpa.content().header().title()).isEqualTo("RPA SPRINT BİLGİLENDİRME");
+        assertThat(rpa.content().header().teamLabel()).isEqualTo("RPA Takımı");
+
+        // Sabit yazilsaydi bu iki baslik ayni olurdu - asil yakalamak
+        // istedigim hata bu. Ayrica Turkce buyuk harf: "Dijital" -> "DİJİTAL",
+        // varsayilan locale'de noktali I kaybolup "DIJITAL" olurdu.
+        assertThat(dijital.content().header().title())
+                .isEqualTo("DİJİTAL UYGULAMALAR SPRINT BİLGİLENDİRME");
+    }
+
+    @Test
+    @DisplayName("varsayılan içerik, oluşturulan belgenin içeriğinin AYNISI")
+    void varsayilanIcerikOlusturulanlaAyni() {
+        // Arayuz acilista bu icerigi cizip kullanici "Kaydet" deyince belge
+        // olusturuyor. Ikisi ayrisirsa kullanici ekranda bir sey gorup baska
+        // bir sey kaydetmis olur - onizlemenin yalan soylemesi.
+        assertThat(service.varsayilanIcerik(1L, TemplateType.KAPANIS))
+                .isEqualTo(yeniKapanis().content());
+
+        assertThat(service.varsayilanIcerik(5L, TemplateType.PLANLAMA))
+                .isEqualTo(service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                        5L, TemplateType.PLANLAMA, "Planlama", SICIL)).content());
+    }
+
+    @Test
+    @DisplayName("son belgeler birden çok takımı birleştirir, sınır sunucuda")
+    void sonBelgelerBirdenCokTakim() {
+        service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "Bir", SICIL));
+        service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                5L, TemplateType.PLANLAMA, "İki", SICIL));
+
+        // Giris sayfasi tek istekle iki takimin belgesini de gormeli - bir
+        // PO'nun birden cok takimi olabiliyor.
+        assertThat(service.sonBelgeler(List.of(1L, 5L), 10)).hasSize(2);
+        assertThat(service.sonBelgeler(List.of(1L), 10)).hasSize(1);
+
+        // Istemci limit=100000 yollayip butun tabloyu cekemez; limit=0 da
+        // sessizce bos liste dondurmez.
+        assertThat(service.sonBelgeler(List.of(1L, 5L), 100_000)).hasSize(2);
+        assertThat(service.sonBelgeler(List.of(1L, 5L), 0)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("hiçbir takıma erişimi olmayan boş liste alır, hata değil")
+    void takimsizKullaniciBosListeAlir() {
+        service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "Bir", SICIL));
+
+        assertThat(service.sonBelgeler(List.of(), 10)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("varsayılan içeriği sormak hiçbir şey yazmaz")
+    void varsayilanIcerikYazmaz() {
+        service.varsayilanIcerik(1L, TemplateType.KAPANIS);
+        service.varsayilanIcerik(1L, TemplateType.PLANLAMA);
+
+        // Her acilista belge dogsaydi terk edilmis "Yeni mail" taslaklari
+        // birikir, Belgelerim listesi kullanilmaz hale gelirdi.
+        assertThat(documentRepo.takimBelgeleri(1L)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("olmayan takımın varsayılan içeriği sorulamaz")
+    void olmayanTakiminVarsayilaniYok() {
+        assertThatThrownBy(() -> service.varsayilanIcerik(999L, TemplateType.KAPANIS))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("olmayan takımla belge oluşturulamaz - 404, yabancı anahtar hatası değil")
+    void olmayanTakimaBelgeAcilmaz() {
+        assertThatThrownBy(() -> service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                999L, TemplateType.KAPANIS, "Hayalet takım", SICIL)))
+                .isInstanceOf(NotFoundException.class);
+
+        assertThat(documentRepo.takimBelgeleri(999L)).isEmpty();
     }
 
     @Test
@@ -210,6 +335,17 @@ class MailerDocumentServiceTest {
         @Override
         public List<MailerDocument> takimBelgeleri(Long teamId) {
             return kayitlar.values().stream().filter(d -> d.teamId().equals(teamId)).toList();
+        }
+
+        @Override
+        public List<MailerDocument> sonBelgeler(List<Long> teamIds, int limit) {
+            // Gercek gerceklemenin sozlesmesi: en yeni once, en fazla limit.
+            return kayitlar.values().stream()
+                    .filter(d -> teamIds.contains(d.teamId()))
+                    .sorted(java.util.Comparator.comparing(
+                            MailerDocument::id, java.util.Comparator.reverseOrder()))
+                    .limit(limit)
+                    .toList();
         }
 
         @Override

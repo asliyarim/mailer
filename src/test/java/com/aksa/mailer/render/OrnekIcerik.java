@@ -64,6 +64,55 @@ public final class OrnekIcerik {
     }
 
     /**
+     * Yonetici Ozeti ornegi. Yapi AKSA_Sprint_Mail_Studio prototipinin "cto"
+     * sablonundan: uc tablo + kart bloku.
+     */
+    public static MailContent yoneticiOzeti() {
+        return new MailContent(
+                1,
+                new MailContent.Header(
+                        "DİJİTAL UYGULAMALAR SPRİNT DEĞERLENDİRME TOPLANTI ÖZETİ",
+                        "16.09.2026 · TOPLANTI SONU",
+                        "Dijital Uygulamalar Takımı"),
+                new MailContent.Meeting("16.09.2026", "10:00", "Microsoft Teams"),
+                List.of("Toplantıda görüşülen konular, alınan kararlar ve takip edilmesi gereken "
+                        + "aksiyonlar aşağıda bilgilerinize sunulmuştur."),
+                List.of(
+                        new MailSection("discussed", "GÖRÜŞÜLEN KONULAR", Tone.BLUE,
+                                List.of("team", "topic", "detail"),
+                                List.of(
+                                        Map.of("team", "RPA", "topic", "Fatura İtiraz Süreci",
+                                                "detail", "MBS verilerinin veri tabanından alınabilmesi değerlendirildi."),
+                                        Map.of("team", "CBS", "topic", "Harita Servisleri",
+                                                "detail", "Servis entegrasyonunun güncel durumu değerlendirildi."))),
+                        new MailSection("decisions", "ALINAN KARARLAR", Tone.GREEN,
+                                List.of("no", "decision", "team"),
+                                List.of(
+                                        Map.of("no", "", "decision",
+                                                "Fatura İtiraz sürecinin mevcut kapsamla devam etmesi", "team", "RPA"))),
+                        new MailSection("actions", "BEKLEYEN KONULAR VE AKSİYONLAR", Tone.ORANGE,
+                                List.of("team", "pending", "owner", "due", "status"),
+                                List.of(
+                                        Map.of("team", "RPA", "pending", "MBS alanlarının incelenmesi",
+                                                "owner", "Ali Osman Bey", "due", "05.09.2026", "status", "Bekliyor"),
+                                        Map.of("team", "CBS", "pending", "Test verilerinin paylaşılması",
+                                                "owner", "CBS Ekibi", "due", "07.09.2026", "status", "Tamamlandı"))),
+                        new MailSection("links", "İNCELEME VE ERİŞİM BAĞLANTILARI", Tone.BLUE,
+                                List.of("linkType", "title", "description", "button", "url"),
+                                List.of(
+                                        Map.of("linkType", "Uygulama", "title", "Müşteri Portalı",
+                                                "description", "Güncel ekranları inceleyin.",
+                                                "button", "Uygulamayı Aç", "url", "https://ornek.local/portal"),
+                                        // URL'siz kart: buton CIZILMEMELI.
+                                        Map.of("linkType", "Doküman", "title", "Süreç Dokümanı",
+                                                "description", "Analiz detaylarını inceleyin.",
+                                                "button", "", "url", "")))),
+                List.of(new MailContent.Note(Tone.GREEN,
+                        "Kritik konular ilgili yöneticilerle ayrıca değerlendirilecektir.")),
+                new MailContent.Footer("Teşekkür ederiz.", "Başarılar dileriz!"));
+    }
+
+    /**
      * Sprint Planlama ornegi. Veriler v6.1'in samplePlanning dizisinden.
      * Tek bolum - planlamada analiz/gelistirme ayrimi yok.
      */

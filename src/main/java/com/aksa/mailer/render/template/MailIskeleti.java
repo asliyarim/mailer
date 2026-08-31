@@ -29,6 +29,26 @@ import static com.aksa.mailer.render.usecase.HtmlKacis.kacirSatirlariKoru;
  */
 abstract class MailIskeleti implements MailTemplate {
 
+    /**
+     * Bir tablo satiri ve ICERIKTEKI sirasi.
+     *
+     * Indeks sart, cunku cizim sirasi icerik sirasiyla ayni olmak zorunda
+     * degil: Kapanis satirlari sektore gore grupluyor. Duzenleme adresi
+     * cizim sirasini tasisaydi kullanici ucuncu satira yazarken icerikte
+     * baska bir satir degisirdi.
+     */
+    protected record Satir(int index, Map<String, String> degerler) {
+
+        /** Bir bolumun satirlarini oldugu sirayla sarar. */
+        static List<Satir> hepsi(List<Map<String, String>> satirlar) {
+            List<Satir> sonuc = new ArrayList<>(satirlar.size());
+            for (int i = 0; i < satirlar.size(); i++) {
+                sonuc.add(new Satir(i, satirlar.get(i)));
+            }
+            return sonuc;
+        }
+    }
+
     /** Govde genisligi. Sabit piksel: Outlook yuzde genislikli ic ice kutuyu bozar. */
     protected static final int GOVDE_GENISLIK = 760;
     private static final int HERO_SOL = 445;
@@ -49,7 +69,24 @@ abstract class MailIskeleti implements MailTemplate {
             Map.entry("status", "DURUM"),
             Map.entry("sprint", "SPRINT"),
             Map.entry("expected", "BEKLENEN KONULAR"),
-            Map.entry("department", "DEPARTMAN"));
+            Map.entry("department", "DEPARTMAN"),
+            // Yonetici Ozeti. Ayni kavramin iki tablodaki basligi farkli
+            // oldugu icin ANAHTARLARI da ayri: "topic" gorusulen konu,
+            // "pending" bekleyen konu. Tek anahtar kullanilsaydi baslik
+            // haritasi global oldugundan ikisinden biri yanlis yazilirdi.
+            Map.entry("team", "EKİP"),
+            Map.entry("topic", "KONU"),
+            Map.entry("detail", "AÇIKLAMA"),
+            Map.entry("no", "NO"),
+            Map.entry("decision", "ALINAN KARAR"),
+            Map.entry("pending", "BEKLEYEN KONU"),
+            Map.entry("owner", "AKSİYON SAHİBİ"),
+            Map.entry("due", "HEDEF"),
+            Map.entry("linkType", "TÜR"),
+            Map.entry("title", "BAŞLIK"),
+            Map.entry("description", "AÇIKLAMA"),
+            Map.entry("button", "BUTON"),
+            Map.entry("url", "BAĞLANTI"));
 
     /** Sutun genislik agirliklari; yuzdeye cevrilir. */
     private static final Map<String, Integer> SUTUN_AGIRLIKLARI = Map.ofEntries(
@@ -66,7 +103,20 @@ abstract class MailIskeleti implements MailTemplate {
             Map.entry("status", 13),
             Map.entry("sprint", 14),
             Map.entry("expected", 32),
-            Map.entry("department", 14));
+            Map.entry("department", 14),
+            Map.entry("team", 15),
+            Map.entry("topic", 22),
+            Map.entry("detail", 45),
+            Map.entry("no", 8),
+            Map.entry("decision", 52),
+            Map.entry("pending", 34),
+            Map.entry("owner", 18),
+            Map.entry("due", 13),
+            Map.entry("linkType", 12),
+            Map.entry("title", 20),
+            Map.entry("description", 34),
+            Map.entry("button", 16),
+            Map.entry("url", 26));
 
     @Override
     public final String uret(MailContent content, MailTheme tema) {
@@ -137,12 +187,15 @@ abstract class MailIskeleti implements MailTemplate {
                 .append(";padding:0 18px 0 30px;color:#ffffff\">")
                 // nowrap YOK - v2'de vardi ve uzun baslik maskotun altina girip
                 // kirpiliyordu. Satir kaymasi, kirpilmaya yeglenir.
-                .append("<div style=\"font-size:32px;line-height:37px;font-weight:900\">")
+                .append("<div").append(adres("header.title"))
+                .append(" style=\"font-size:32px;line-height:37px;font-weight:900\">")
                 .append(kacir(content.header().title())).append("</div>")
-                .append("<div style=\"font-size:22px;line-height:27px;font-weight:900;color:")
+                .append("<div").append(adres("header.period"))
+                .append(" style=\"font-size:22px;line-height:27px;font-weight:900;color:")
                 .append(tema.heroAccent()).append(";margin-top:6px\">")
                 .append(kacir(content.header().period())).append("</div>")
-                .append("<div style=\"font-size:18px;line-height:24px;margin-top:12px\">")
+                .append("<div").append(adres("header.teamLabel"))
+                .append(" style=\"font-size:18px;line-height:24px;margin-top:12px\">")
                 .append(kacir(content.header().teamLabel())).append("</div>")
                 .append("</td>")
                 .append("<td width=\"").append(gorsel.width()).append("\" height=\"").append(gorsel.height())
@@ -163,9 +216,19 @@ abstract class MailIskeleti implements MailTemplate {
                 .append("font-size:14px;line-height:21px;color:").append(tema.bodyText()).append("\">");
 
         List<String> paragraflar = content.intro().stream().filter(p -> p != null && !p.isBlank()).toList();
-        for (int i = 0; i < paragraflar.size(); i++) {
-            html.append("<p style=\"margin:0").append(i < paragraflar.size() - 1 ? " 0 12px" : "").append("\">")
-                    .append(kacirSatirlariKoru(paragraflar.get(i)))
+        // Adres icerikteki asil indeksi tasimali: bos paragraflar cizilmiyor,
+        // filtrelenmis listenin sirasi kullanilsaydi kullanici ikinci
+        // paragrafa yazarken ucuncusu degisirdi.
+        List<String> hamGiris = content.intro();
+        for (int i = 0, cizilen = 0; i < hamGiris.size(); i++) {
+            String paragraf = hamGiris.get(i);
+            if (paragraf == null || paragraf.isBlank()) {
+                continue;
+            }
+            cizilen++;
+            html.append("<p").append(adres("intro." + i))
+                    .append(" style=\"margin:0").append(cizilen < paragraflar.size() ? " 0 12px" : "").append("\">")
+                    .append(kacirSatirlariKoru(paragraf))
                     .append("</p>");
         }
 
@@ -178,17 +241,27 @@ abstract class MailIskeleti implements MailTemplate {
         html.append("</td></tr></table>");
     }
 
-    /** "Toplantı: 03.09.2026 · 10:00 · Toplantı Salonu" - yalnizca dolu alanlar. */
+    /**
+     * "Toplantı: 03.09.2026 · 10:00 · Toplantı Salonu" - yalnizca dolu alanlar.
+     * Her parca kendi adresini tasiyor: uc alan tek metne aksaydi kullanici
+     * saate tiklayip yazdiginda hangi alanin degistigi belirsiz olurdu.
+     */
     private String toplantiSatiri(MailContent content) {
         MailContent.Meeting m = content.meeting();
         if (m == null) {
             return "";
         }
         List<String> parcalar = new ArrayList<>();
-        if (m.date() != null && !m.date().isBlank()) parcalar.add(kacir(m.date()));
-        if (m.time() != null && !m.time().isBlank()) parcalar.add(kacir(m.time()));
-        if (m.place() != null && !m.place().isBlank()) parcalar.add(kacir(m.place()));
+        parcaEkle(parcalar, "meeting.date", m.date());
+        parcaEkle(parcalar, "meeting.time", m.time());
+        parcaEkle(parcalar, "meeting.place", m.place());
         return parcalar.isEmpty() ? "" : "Toplantı: " + String.join(" &middot; ", parcalar);
+    }
+
+    private void parcaEkle(List<String> parcalar, String yol, String deger) {
+        if (deger != null && !deger.isBlank()) {
+            parcalar.add("<span" + adres(yol) + ">" + kacir(deger) + "</span>");
+        }
     }
 
     // --- sayac yardimcilari ---------------------------------------------------
@@ -217,7 +290,8 @@ abstract class MailIskeleti implements MailTemplate {
     protected void bolumBasligi(StringBuilder html, MailSection bolum, MailTheme tema) {
         html.append("<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\"")
                 .append(" style=\"margin-top:16px;border-collapse:collapse\"><tr>")
-                .append("<td style=\"height:54px;padding:0 20px;background:")
+                .append("<td").append(adres("sections." + bolum.key() + ".title"))
+                .append(" style=\"height:54px;padding:0 20px;background:")
                 .append(tema.colors(bolum.tone()).sectionHeader())
                 .append(";color:#ffffff;font-family:Arial,sans-serif;font-size:18px;font-weight:900;")
                 .append("vertical-align:middle\">")
@@ -233,8 +307,8 @@ abstract class MailIskeleti implements MailTemplate {
      * @param gruplar grup adi -> satirlar. Gruplama istenmiyorsa tek bir
      *                bos anahtarli girdi verilir.
      */
-    protected void tablo(StringBuilder html, List<String> sutunlar,
-                         Map<String, List<Map<String, String>>> gruplar,
+    protected void tablo(StringBuilder html, String bolumAnahtari, List<String> sutunlar,
+                         Map<String, List<Satir>> gruplar,
                          MailTheme tema, ToneColors renk) {
         List<Integer> yuzdeler = sutunYuzdeleri(sutunlar);
 
@@ -252,7 +326,7 @@ abstract class MailIskeleti implements MailTemplate {
         }
         html.append("</tr>");
 
-        for (Map.Entry<String, List<Map<String, String>>> grup : gruplar.entrySet()) {
+        for (Map.Entry<String, List<Satir>> grup : gruplar.entrySet()) {
             if (!grup.getKey().isBlank()) {
                 html.append("<tr><td colspan=\"").append(sutunlar.size())
                         .append("\" style=\"padding:9px 12px;background:").append(renk.tableHeaderBackground())
@@ -263,15 +337,29 @@ abstract class MailIskeleti implements MailTemplate {
                         .append(kacir(grup.getKey()))
                         .append("</td></tr>");
             }
-            for (Map<String, String> satir : grup.getValue()) {
-                html.append("<tr>");
+            for (Satir satir : grup.getValue()) {
+                // Satirin kendisi de adreslenir: arayuz satir ekleme/silme/
+                // siralama duğmelerini bunun uzerine konumlandiriyor.
+                // Hucrelerden cikarim yapmak zorunda kalmasin.
+                html.append("<tr").append(adres("sections." + bolumAnahtari + ".rows." + satir.index()))
+                        .append(">");
                 for (int i = 0; i < sutunlar.size(); i++) {
-                    String deger = kacirSatirlariKoru(satir.getOrDefault(sutunlar.get(i), ""));
+                    String sutun = sutunlar.get(i);
+                    String deger = kacirSatirlariKoru(satir.degerler().getOrDefault(sutun, ""));
                     // Ilk sutun anahtar sutunudur - kalin ve renkli.
                     String icerik = i == 0
                             ? "<b style=\"color:" + renk.keyText() + "\">" + deger + "</b>"
                             : deger;
-                    html.append(hucre(icerik, "", i == sutunlar.size() - 1, tema));
+                    // Uretilen sutuna adres BASILMAZ: adres "bu HTML sunu
+                    // gosteriyor" demek, uretilen sutunda ise icerikteki
+                    // deger bos - yol yanlis bir sey iddia ederdi. Basilsaydi
+                    // kullanici tiklayip yazar, sonraki cizimde sunucu
+                    // yazdigini ezerdi (sessiz veri kaybi).
+                    String adres = uretilenSutun(bolumAnahtari, sutun)
+                            ? ""
+                            : adres("sections." + bolumAnahtari + ".rows." + satir.index() + "." + sutun)
+                              + secenekler(bolumAnahtari, sutun);
+                    html.append(hucre(icerik, "", i == sutunlar.size() - 1, tema, adres));
                 }
                 html.append("</tr>");
             }
@@ -280,10 +368,57 @@ abstract class MailIskeleti implements MailTemplate {
     }
 
     private String hucre(String icerik, String ekStil, boolean sonSutun, MailTheme tema) {
-        return "<td style=\"padding:10px;border-bottom:1px solid " + tema.cellBorder() + ";"
+        return hucre(icerik, ekStil, sonSutun, tema, "");
+    }
+
+    private String hucre(String icerik, String ekStil, boolean sonSutun, MailTheme tema, String adres) {
+        return "<td" + adres + " style=\"padding:10px;border-bottom:1px solid " + tema.cellBorder() + ";"
                 + (sonSutun ? "" : "border-right:1px solid " + tema.cellBorder() + ";")
                 + "vertical-align:top;font-family:Arial,sans-serif;font-size:12px;line-height:17px;color:"
                 + tema.bodyText() + ";" + ekStil + "\">" + icerik + "</td>";
+    }
+
+    // --- duzenleme adresleri ----------------------------------------------------
+
+    /**
+     * data-alan niteligi. Arayuz bunu okuyup kullanicinin onizlemedeki alana
+     * tiklayip yazmasini sagliyor; .eml'e giderken DuzenlemeAdresleri soyuyor.
+     *
+     * Yol kacirilarak yaziliyor: bolum anahtari kullanici icerigi ve tirnak
+     * icerebilir - kacirilmasa nitelikten disari tasip HTML'i bozardi.
+     */
+    protected String adres(String yol) {
+        return " data-alan=\"" + kacir(yol) + "\"";
+    }
+
+    /**
+     * Degeri KULLANICIDAN degil sablondan gelen sutun.
+     *
+     * Boyle bir sutun duzenlenebilir gorunmemeli: icerikte karsiligi bos
+     * oldugu icin adres yanlis olur, ve kullanici yazsa bile sonraki cizimde
+     * uretilen deger onu ezer. Varsayilan: hicbir sutun uretilmiyor.
+     */
+    protected boolean uretilenSutun(String bolumAnahtari, String sutun) {
+        return false;
+    }
+
+    /**
+     * Sabit secenekli bir sutunsa secenekleri data-secenekler ile bildirir.
+     *
+     * Boylece liste TEK YERDE kalir: arayuz onu ikinci kez yazmaz. Yazsaydi
+     * biri digerine eklenen bir durumu kacirir ve kullanici mailde gecerli
+     * ama listede olmayan bir deger gorurdu.
+     *
+     * Varsayilan: hicbir sutun sabit secenekli - serbest metin sutununa liste
+     * dayatmak veri kaybettirir (Planlama'nin "status"u boyle).
+     */
+    protected String secenekler(String bolumAnahtari, String sutun) {
+        return "";
+    }
+
+    /** data-secenekler="A|B|C". Ayirac dikey cizgi - degerlerde gecmiyor. */
+    protected String seceneklerNiteligi(List<String> degerler) {
+        return " data-secenekler=\"" + kacir(String.join("|", degerler)) + "\"";
     }
 
     /** Agirliklari yuzdeye cevirir; toplam farki ilk sutuna eklenir. */
@@ -318,11 +453,14 @@ abstract class MailIskeleti implements MailTemplate {
         List<MailContent.Note> notlar = content.notes();
         for (int i = 0; i < notlar.size(); i++) {
             MailContent.Note not = notlar.get(i);
+            // Adres madde isaretini DEGIL yalnizca metni sariyor: kullanici
+            // noktaya degil yaziya tikliyor.
             html.append("<p style=\"margin:0").append(i < notlar.size() - 1 ? " 0 14px" : "").append("\">")
                     .append("<b style=\"color:").append(tema.colors(not.tone()).bullet())
                     .append("\">&#9679;</b>&nbsp; ")
+                    .append("<span").append(adres("notes." + i + ".text")).append(">")
                     .append(kacirSatirlariKoru(not.text()))
-                    .append("</p>");
+                    .append("</span></p>");
         }
         html.append("</td></tr></table>");
     }
@@ -338,10 +476,12 @@ abstract class MailIskeleti implements MailTemplate {
                 .append(img(tema.logo())).append("</td>")
                 .append("<td style=\"border-left:3px solid ").append(tema.footerRule())
                 .append(";padding-left:20px;color:#ffffff;font-family:Arial,sans-serif\">")
-                .append("<div style=\"color:").append(tema.footerAccent())
+                .append("<div").append(adres("footer.line1"))
+                .append(" style=\"color:").append(tema.footerAccent())
                 .append(";font-size:17px;font-weight:bold\">")
                 .append(kacir(content.footer() == null ? "" : content.footer().line1())).append("</div>")
-                .append("<div style=\"font-size:21px;font-weight:900;margin-top:5px\">")
+                .append("<div").append(adres("footer.line2"))
+                .append(" style=\"font-size:21px;font-weight:900;margin-top:5px\">")
                 .append(kacir(content.footer() == null ? "" : content.footer().line2())).append("</div>")
                 .append("</td>")
                 .append("<td width=\"112\" valign=\"bottom\" align=\"center\">")

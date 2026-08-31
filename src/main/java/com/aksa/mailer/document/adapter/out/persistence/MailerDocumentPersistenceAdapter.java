@@ -4,6 +4,7 @@ import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.MailerDocument;
 import com.aksa.mailer.document.port.out.MailerDocumentRepository;
 import com.aksa.mailer.document.port.out.MailerDocumentVersionRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -30,6 +31,20 @@ class MailerDocumentPersistenceAdapter implements MailerDocumentRepository, Mail
     @Override
     public List<MailerDocument> takimBelgeleri(Long teamId) {
         return documentJpa.findByTeamIdOrderByUpdatedAtDesc(teamId).stream()
+                .map(MailerDocumentPersistenceAdapter::domaine)
+                .toList();
+    }
+
+    @Override
+    public List<MailerDocument> sonBelgeler(List<Long> teamIds, int limit) {
+        // Bos liste ile IN sorgusu bazi veritabanlarinda sozdizimi hatasi
+        // verir; hicbir takima erisimi olmayan kullaniciya bos liste doner.
+        if (teamIds.isEmpty()) {
+            return List.of();
+        }
+        return documentJpa
+                .findByTeamIdInOrderByUpdatedAtDesc(teamIds, PageRequest.of(0, limit))
+                .stream()
                 .map(MailerDocumentPersistenceAdapter::domaine)
                 .toList();
     }

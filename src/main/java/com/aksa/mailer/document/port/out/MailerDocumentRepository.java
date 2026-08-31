@@ -11,6 +11,9 @@ public interface MailerDocumentRepository {
     /** En son guncellenen basta. */
     List<MailerDocument> takimBelgeleri(Long teamId);
 
+    /** Birden cok takimin belgeleri, en son guncellenen basta, en fazla limit tane. */
+    List<MailerDocument> sonBelgeler(List<Long> teamIds, int limit);
+
     Optional<MailerDocument> bul(Long id);
 
     MailerDocument kaydet(MailerDocument document);

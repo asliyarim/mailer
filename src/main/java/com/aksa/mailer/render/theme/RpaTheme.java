@@ -49,6 +49,16 @@ public final class RpaTheme {
                         "#368f31",
                         "#339131",
                         "#43a437"),
+                // Turuncu v2'de YOK - Yonetici Ozeti'yle geldi. Degerler
+                // AKSA_Sprint_Mail_Studio prototipinden (--orange #ef7a16,
+                // tablo basligi #db6c12).
+                new ToneColors(
+                        "#db6c12",
+                        "#fff7ef",
+                        "#b4560b",
+                        "#c05e0d",
+                        "#e07714",
+                        "#ef7a16"),
                 new ThemeImage("hero", "themes/rpa/hero.png", 315, 235),
                 new ThemeImage("intro", "themes/rpa/intro.png", 120, 120),
                 new ThemeImage("notes", "themes/rpa/notes.png", 225, 151),

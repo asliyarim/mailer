@@ -14,7 +14,13 @@ import com.fasterxml.jackson.annotation.JsonValue;
  */
 public enum Tone {
     BLUE("blue"),
-    GREEN("green");
+    GREEN("green"),
+    /**
+     * Dikkat/bekleme rolu. Yonetici Ozeti'ndeki "BEKLEYEN KONULAR VE
+     * AKSIYONLAR" tablosu bunu kullaniyor: tamamlanmis is yesil, devam eden
+     * mavi, bekleyen turuncu okunuyor.
+     */
+    ORANGE("orange");
 
     private final String jsonDegeri;
 

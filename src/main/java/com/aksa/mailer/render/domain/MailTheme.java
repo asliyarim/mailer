@@ -35,6 +35,7 @@ public record MailTheme(
         String footerAccent,
         ToneColors blue,
         ToneColors green,
+        ToneColors orange,
         ThemeImage hero,
         ThemeImage intro,
         ThemeImage notes,
@@ -43,7 +44,16 @@ public record MailTheme(
 
     /** Ton rolunu bu temanin gercek renklerine cevirir. */
     public ToneColors colors(Tone tone) {
-        return tone == Tone.GREEN ? green : blue;
+        // Ton belirtilmemisse maviyle cizilir - render asamasinda patlamaz.
+        // (Bos ton dogrulamada zaten yakalaniyor; burasi son emniyet.)
+        if (tone == null) {
+            return blue;
+        }
+        return switch (tone) {
+            case GREEN -> green;
+            case ORANGE -> orange;
+            case BLUE -> blue;
+        };
     }
 
     /** Maile gomulecek bes gorsel, mailde gectikleri sirayla. */

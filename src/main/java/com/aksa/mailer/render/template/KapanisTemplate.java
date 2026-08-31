@@ -53,14 +53,20 @@ public class KapanisTemplate extends MailIskeleti {
             return;
         }
 
-        tablo(html, sutunlar, grupla(bolum, sektoreGoreGrupla), tema, tema.colors(bolum.tone()));
+        tablo(html, bolum.key(), sutunlar, grupla(bolum, sektoreGoreGrupla), tema, tema.colors(bolum.tone()));
     }
 
-    /** Satirlari sektore gore, ilk gorunme sirasini koruyarak gruplar. */
-    private Map<String, List<Map<String, String>>> grupla(MailSection bolum, boolean sektoreGore) {
-        Map<String, List<Map<String, String>>> gruplar = new LinkedHashMap<>();
-        for (Map<String, String> satir : bolum.rows()) {
-            String anahtar = sektoreGore ? satir.getOrDefault("sector", "") : "";
+    /**
+     * Satirlari sektore gore, ilk gorunme sirasini koruyarak gruplar.
+     *
+     * Satirin ICERIKTEKI indeksi de tasiniyor: gruplama cizim sirasini
+     * degistirdigi icin duzenleme adresi cizim sirasini tasisaydi kullanici
+     * yanlis satiri degistirirdi.
+     */
+    private Map<String, List<Satir>> grupla(MailSection bolum, boolean sektoreGore) {
+        Map<String, List<Satir>> gruplar = new LinkedHashMap<>();
+        for (Satir satir : Satir.hepsi(bolum.rows())) {
+            String anahtar = sektoreGore ? satir.degerler().getOrDefault("sector", "") : "";
             gruplar.computeIfAbsent(anahtar == null ? "" : anahtar, k -> new ArrayList<>()).add(satir);
         }
         return gruplar;

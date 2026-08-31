@@ -151,6 +151,96 @@ Yeni taslak. **Tipin ve temanın varsayılan içeriğiyle doğar** — istemci b
 
 **Yanıt `201`** — 4. uçtaki tam belge gövdesi. `currentVersion` = 1.
 
+### Yeni belge **geçerli** doğar
+
+Varsayılan içerik yalnızca bölüm başlıkları ve sütun listelerinden ibaret
+değil: `header.title` ve `header.teamLabel` de dolu gelir. Sebebi tek cümle —
+bu ikisi `PUT` ve önizlemenin **zorunlu** tuttuğu alanlar; boş doğsalardı belge
+doğduğu anda kendi kuralını ihlal eder, kullanıcı tek harf yazmadan önizlemede
+hata görürdü.
+
+| Alan | Değer | Örnek (takım 5) |
+|---|---|---|
+| `header.title` | takım adı + tipe göre ibare | `DİJİTAL UYGULAMALAR SPRINT BİLGİLENDİRME` |
+| `header.teamLabel` | takımın adı, **olduğu gibi** | `Dijital Uygulamalar Takımı` |
+| `header.period` | boş | — |
+
+Başlıkta takım adının sonundaki "Takımı"/"Ekibi" atılır ve Türkçe kurallarla
+büyütülür (`Dijital` → `DİJİTAL`). Metin **sabit değil, türetilmiş**: sabit
+olsaydı her takımın mailinde aynı takımın adı görünürdü.
+
+`period` boş bırakılır — sprint numarası ve tarih aralığı tahmin edilemez.
+
+Bunlar **başlangıç değeri**; kullanıcı üçünü de değiştirebilir.
+
+> Bu uç artık `teamId`'yi de doğruluyor: olmayan takım `404` döner (eskiden
+> yabancı anahtar ihlaline düşüp `500` olurdu).
+
+---
+
+## 2b. `GET /api/mailer/documents/recent`
+
+Giriş sayfasındaki **"Son Taslaklarım"**. Kullanıcının erişebildiği **bütün**
+takımların belgeleri, en yeni önce.
+
+```
+GET /api/mailer/documents/recent?limit=12
+```
+
+**Yanıt `200`** — §2'dekiyle aynı özet dizisi.
+
+`teamId` **parametre değil**: oturumun kendi takımlarından türetilir. Yetkisiz
+bir takım istenemez çünkü istenecek alan yok. `ADMIN` bütün aktif takımları
+görür.
+
+`limit` sunucuda **1–50** arasına kırpılır. `limit=100000` gönderirsen 50
+alırsın; istemci bütün tabloyu çekemez.
+
+> **Neden ayrı uç:** §2 tek takım ister, ama bir PO'nun birden çok takımı
+> olabiliyor. Giriş sayfasının N istek atmasını istemiyoruz.
+
+**Gruplama istemcide yapılır** — `templateType` zaten özette geliyor. Sunucu
+üç ayrı liste döndürseydi "son N kayıt" anlamı bozulurdu.
+
+---
+
+## 3b. `GET /api/mailer/documents/default`
+
+**Bir belge oluşturulsaydı içeriği ne olurdu** — hiçbir şey yazmadan.
+
+```
+GET /api/mailer/documents/default?teamId=1&templateType=KAPANIS
+```
+
+**Yanıt `200`** — doğrudan `content` nesnesi (§3'teki belgenin `content`
+alanının aynısı, sarmalayıcı yok).
+
+Arayüz, uygulama açılır açılmaz sağdaki mail şablonunu **belge oluşturmadan**
+çizebilsin diye var. Alternatifleri şunlardı, ikisi de daha kötü:
+
+| Alternatif | Neden değil |
+|---|---|
+| Açılışta `POST /documents` | Her açılışta bir taslak satırı düşer; terk edilmiş "Yeni mail" belgeleri birikip Belgelerim listesini kullanılmaz hale getirir |
+| İskeleti frontend'de kurmak | Varsayılan içeriğin **ikinci** bir tanımı olur (bölüm başlıkları, sütun listeleri, başlık türetmesi) ve zamanla sunucudakinden ayrışır |
+
+**Bu uç `POST /documents`'in üreteceğinin aynısını döndürür** — söz olarak
+değil, yapısal olarak: ikisi sunucuda aynı metodu çağırır, ve bir test bunu
+her derlemede karşılaştırıyor. Ayrışırlarsa kullanıcı ekranda bir şey görüp
+başka bir şey kaydederdi.
+
+**Yan etkisi yoktur.** Ne belge, ne sürüm, ne log satırı yazar.
+
+| Durum | Kod |
+|---|---|
+| Yetkisiz takım | `403` |
+| Olmayan takım (PO) | `403` — yetki kapısı önce kapanır |
+| Olmayan takım (ADMIN) | `404` |
+| Geçersiz `templateType` | `400` |
+
+> Olmayan takım PO'ya neden `404` değil `403`? Yetki kontrolü takım
+> aramasından **önce** çalışıyor. Tersi olsaydı yetkisiz biri, `404` ile
+> `403` farkına bakarak hangi takım kimliklerinin var olduğunu çıkarabilirdi.
+
 ---
 
 ## 4. `GET /api/mailer/documents/{id}`
@@ -250,16 +340,119 @@ her tuşta kaydetmek istemiyoruz ama kullanıcı yazdığını görmeli.
 
 **Yanıt `200`**, `Content-Type: text/html; charset=UTF-8` — gövde ham HTML.
 
-Bu HTML **`.eml` içine giren HTML'in ta kendisidir.** İstemci onu olduğu gibi
-`iframe srcdoc`'una basar; üzerinde değişiklik yapmaz, ikinci bir sürüm
-üretmez (Mimari Kural 1).
+İstemci onu olduğu gibi `iframe srcdoc`'una basar; üzerinde değişiklik
+yapmaz, ikinci bir sürüm üretmez (Mimari Kural 1).
 
 İstemci çağrıyı **300 ms geciktirir** ve yeni tuşa basıldığında öncekini iptal
 eder.
 
-> Görseller önizlemede `cid:` referansı taşır ve **görünmez** — normaldir.
-> `cid:` ancak mail istemcisi içinde çözülür. Önizlemede görselleri görmek
-> istiyorsan bu, Kural 2'yi delmek için bir gerekçe değil; Outlook'ta test et.
+### Önizleme ile `.eml` arasındaki **iki** fark
+
+Aynı HTML'dir; iki noktada, adlandırılmış biçimde ve çift yönlü kilitli olarak
+ayrışır. **Sayı ikidir ve öyle kalmalıdır** — sessizce artarsa iki prototipte
+de yaşanan "önizlemede düzelen mailde düzelmiyor" hatasına dönülür.
+
+| # | Fark | Önizleme | `.eml` | Nerede |
+|---|---|---|---|---|
+| 1 | Görsel referansı | `data:` URI (gömülü) | `cid:` | `OnizlemeGorselleri` |
+| 2 | Düzenleme adresi | `data-alan="..."` var | **yok** | `DuzenlemeAdresleri`, export ucunda |
+
+İkisi de **ikinci bir HTML üretimi değil**: düzenin tek kaynağı hâlâ
+`MailHtmlRenderer`.
+
+> Eskiden burada "görseller önizlemede görünmez, normaldir" yazıyordu.
+> Doğru değildi: tarayıcı `cid:` çözemez, o yüzden **aynı dosyaların** base64
+> hâli gömülüyor. Düzen, renk, ölçü değişmiyor.
+
+### Satır içi düzenleme: `data-alan`
+
+Önizlemedeki her düzenlenebilir alan, içerik JSON'undaki karşılığının **nokta
+yolunu** taşır. Kullanıcı sağdaki maile tıklayıp yazabilsin diye.
+
+**Neden sunucu basıyor:** hangi hücrenin hangi veriye karşılık geldiğini
+yalnızca sunucu bilir. Sütun sırası tipe ve kullanıcının sütun seçimine göre
+değişir; istemci hücre sayarak eşleştirseydi ilk sütun değişikliğinde yanlış
+alana yazardı.
+
+```
+header.title          header.period        header.teamLabel
+meeting.date          meeting.time         meeting.place
+intro.0
+sections.<key>.title
+sections.<key>.rows.<index>.<field>
+notes.<index>.text
+footer.line1          footer.line2
+```
+
+Üç kural, üçü de test altında:
+
+**Bölüm `key` ile adreslenir, indeksle değil.** Kullanıcı bölüm ekleyip
+silince indeks kayar, anahtar kaymaz.
+
+**Satır indeksi ÇİZİM sırasını değil İÇERİK sırasını taşır.** Kapanış
+satırları sektöre göre gruplanır; sektörler `A, B, A` ise çizim sırası
+`0, 2, 1` olur ama ekrandaki ikinci satırın adresi `rows.2`'dir.
+
+**`intro` indeksi de içeriktekidir.** Boş paragraflar çizilmez;
+`["dolu", "", "dolu"]` içeriğinde çizilen ikinci paragraf `intro.2` der.
+
+Adres, metni saran elemanda durur: metin tek başınaysa `<td>`/`<div>`
+üzerinde, başka içerikle karışıyorsa bir `<span>` içinde (notlarda madde
+işareti değil yalnızca yazı sarılır).
+
+**Satırın kendisi de adreslenir:**
+
+```html
+<tr data-alan="sections.discussed.rows.0">
+```
+
+Satır ekleme / silme / sıralama düğmelerini bunun üzerine konumlandırmak
+için. İstemci hücrelerden ön ek çıkarmak zorunda kalmasın.
+
+**Üretilen sütun adres taşımaz.** Değeri kullanıcıdan değil şablondan gelen
+bir sütun düzenlenebilir görünmemeli: içerikte karşılığı boş olduğu için
+adres yanlış bir şey iddia ederdi, ve kullanıcı yazsa bile sonraki çizimde
+üretilen değer onu ezerdi. Şu an tek örnek Yönetici Özeti'nin `no` sütunu.
+
+**Sabit seçenekli sütun seçeneklerini bildirir:**
+
+```html
+<td data-alan="sections.actions.rows.0.status"
+    data-secenekler="Bekliyor|Devam Ediyor|Karar Bekliyor|Tamamlandı">
+```
+
+Liste **tek yerde** kalsın diye. İstemci ikinci kez yazsaydı, biri diğerine
+eklenen bir durumu kaçırır ve kullanıcı mailde geçerli ama listede olmayan
+bir değer görürdü. Ayraç dikey çizgi.
+
+> `data-secenekler` de `.eml`'e gitmez. Soyma listesi **adı adı sayılmış**
+> bir listedir; yeni bir `data-*` niteliği eklenip listeye yazılmazsa
+> sessizce Outlook'a giderdi. Test bunu "geriye **hiç** `data-` kalmaz"
+> diye arayarak yakalar.
+
+Yol kaçırılarak yazılır — bölüm anahtarı kullanıcı içeriğidir, tırnak
+içerebilir.
+
+---
+
+## 8b. `POST /api/mailer/render/clipboard`
+
+**"Outlook İçin Kopyala"** — panoya konacak HTML. Gövde §8 ile aynı.
+
+**Yanıt `200`**, `text/html`.
+
+Önizlemeden **tek farkı** düzenleme niteliklerinin soyulmuş olması: kullanıcı
+bunu Outlook taslağına yapıştıracak, editör için var olan nitelikler oraya
+taşınmasın.
+
+Görseller `data:` URI ile gömülü gelir — `cid:` pano üzerinden çalışmaz, MIME
+kabı yok.
+
+> **Garanti yol `.eml`'dir.** Outlook masaüstünün `data:` URI'yi nasıl ele
+> aldığı sürüme göre değişiyor. Bu uç **kolaylık** içindir: açık bir taslağa
+> yapıştırmak istendiğinde. Görseller gelmezse çözüm tema görsellerini
+> kimlik doğrulamasız bir uçtan yayınlayıp mutlak URL'e geçmektir — henüz
+> yapılmadı, çünkü yeni bir açık uç sessizce eklenmez.
 
 ---
 
@@ -304,7 +497,16 @@ Toplam boyut **300 KB altında** kalmalı.
 { "format": "EML" }
 ```
 
-`format`: `EML` | `PDF`
+`format`: `EML` | `PDF` | `KOPYALA`
+
+`KOPYALA` = "Outlook İçin Kopyala" (§8b). Panoya almak da bir dağıtım yolu;
+ölçümde diğer ikisiyle aynı yerde durmalı, yoksa "kaç mail üretildi"
+sorusunun cevabı eksik çıkar.
+
+> Değer listesi `DownloadFormat` enum'u ile `mailer_download_logs`'un `CHECK`
+> kısıtında **iki yerde** yazılı. Enum'a değer eklenip migrasyon yazılmazsa
+> uygulama derlenir ama kayıt atarken kısıt ihlaline düşer — ve bunu ancak
+> kullanıcı indirmeye çalıştığında görürüz. `KOPYALA` için `V5`.
 
 **Yanıt `204`** — gövde yok.
 
@@ -348,8 +550,17 @@ Tam açıklama: [`BRIEF.md` §6](BRIEF.md). Burada bağlayıcı olan kısım:
    Başka bir takımın üç bölümü olabilir; şema bunu kod değişikliği olmadan
    taşır.
 
-`tone` değeri `blue` | `green`. Bu bir **renk adı değil, rol adı** — gerçek
-renk temadan gelir. İstemci asla renk kodu göndermez.
+`tone` değeri `blue` | `green` | `orange`. Bu bir **renk adı değil, rol adı** —
+gerçek renk temadan gelir. İstemci asla renk kodu göndermez.
+
+| Ton | Rol | Takıma göre değişir mi |
+|---|---|---|
+| `blue` | nötr / varsayılan | **Evet** — takımın kurumsal rengi buranın yerini alır |
+| `green` | geliştirme / tamamlandı | Hayır |
+| `orange` | bekliyor / dikkat | Hayır |
+
+Yeşil ve turuncu rol rengidir: "bekleyen iş" her takımda aynı şey demek.
+Sekiz temanın hepsi üç tonu da taşır, yani her bölüm her tonda çizilebilir.
 
 ### Satır alanları
 
@@ -383,6 +594,48 @@ Tek sözlük; hangi alanın kullanılacağını bölümün `columns` dizisi söy
 
 Planlamada tablolar **gruplanmaz** — konular kullanıcının girdiği sırada tek
 listede durur.
+
+**Yönetici Özeti**
+
+Diğer iki tipten farkı: bölümler serbest değil, **dördü de sabit**. Yapı tipe
+değil bölüme bağlı olduğu için sütun seçimi bu tipte kapalıdır — `url`'i
+görüşülen konular tablosuna eklemek anlamsız olurdu.
+
+| `key` | Başlık | Ton | Sütunlar |
+|---|---|---|---|
+| `discussed` | GÖRÜŞÜLEN KONULAR | `blue` | `team`, `topic`, `detail` |
+| `decisions` | ALINAN KARARLAR | `green` | `no`, `decision`, `team` |
+| `actions` | BEKLEYEN KONULAR VE AKSİYONLAR | `orange` | `team`, `pending`, `owner`, `due`, `status` |
+| `links` | İNCELEME VE ERİŞİM BAĞLANTILARI | `blue` | `linkType`, `title`, `description`, `button`, `url` |
+
+Üç davranış istemciyi ilgilendiriyor:
+
+**`no` içeriğe yazılmaz.** Boş bırakılır, çizerken `K-01`, `K-02` üretilir.
+Kullanıcı ortadaki kararı silince kalanlar kendiliğinden yeniden numaralanır —
+kaydedilseydi `K-01`, `K-03` diye boşluklu giderdi. Arayüz bu alanı
+göstermez.
+
+**`links` tablo değil kart.** Kartlar tek satırda yan yana durur; Outlook
+alta kaydırmaz, o yüzden bağlantı sayısı **dörtle sınırlıdır**. Buton yalnızca
+`url` doluysa çizilir — tıklanıp hiçbir şey olmayan buton maildeki en can
+sıkıcı şeydir.
+
+**Sayaçları sunucu hesaplar**, istemci gönderemez:
+
+| Sayaç | Nasıl |
+|---|---|
+| YER ALAN EKİP | `discussed` içindeki tekrarsız `team` |
+| GÖRÜŞÜLEN KONU | `discussed` satır sayısı |
+| ALINAN KARAR | `decisions` satır sayısı |
+| BEKLEYEN KONU | `actions` içinde `status != "Tamamlandı"` (boş durum da bekliyor sayılır) |
+
+Arayüz bu tipte kendi sayaç şeridini **göstermemeli**: genel şerit toplam
+satırı sayar, mail tamamlananı düşer. İkisi de doğrudur ama farklı şeyi sayar
+ve kullanıcı bunu hata sanar.
+
+`status` bu tipte dört sabit değer alır: `Bekliyor`, `Devam Ediyor`,
+`Karar Bekliyor`, `Tamamlandı`. **Sprint Planlama'da aynı alan serbest
+metindir** — orada ortak liste dayatmak veri kaybettirirdi.
 
 > **Neden bazı alanlar varsayılan kapalı:** mail gövdesi 760 piksel sabit
 > (Outlook yüzde genişlikli iç içe kutuyu bozar). Altı sütundan fazlası

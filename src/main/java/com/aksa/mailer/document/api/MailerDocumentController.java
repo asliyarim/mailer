@@ -5,8 +5,11 @@ import com.aksa.mailer.document.api.dto.CreateDocumentRequest;
 import com.aksa.mailer.document.api.dto.DownloadLogRequest;
 import com.aksa.mailer.document.api.dto.MailerDocumentResponse;
 import com.aksa.mailer.document.api.dto.SaveDocumentRequest;
+import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.MailerDocument;
+import com.aksa.mailer.document.domain.TemplateType;
 import com.aksa.mailer.document.port.in.ManageMailerDocumentsUseCase;
+import com.aksa.mailer.team.domain.MailTeam;
 import com.aksa.mailer.team.port.in.GetTeamsUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -45,6 +48,46 @@ public class MailerDocumentController {
                                                                       Authentication authentication) {
         OturumKullanicisi.of(authentication).dogrula(teamId);
         return documents.takimBelgeleri(teamId);
+    }
+
+    /**
+     * Giris sayfasindaki "Son Taslaklarım".
+     *
+     * Kullanicinin erisebildigi BUTUN takimlarin belgeleri, en yeni once.
+     * Listeleme ucu tek takim istiyor ama bir PO'nun birden cok takimi
+     * olabiliyor; arayuz giris sayfasi icin N istek atmasin diye tek uc.
+     *
+     * Yetki kontrolu burada BASKA turlu: teamId disaridan gelmiyor, oturumun
+     * kendi takimlarindan turetiliyor. Yani yetkisiz bir takim istenemez -
+     * istenecek bir alan yok.
+     */
+    @GetMapping("/recent")
+    public List<ManageMailerDocumentsUseCase.DocumentSummary> sonBelgeler(
+            @RequestParam(defaultValue = "12") int limit,
+            Authentication authentication) {
+        OturumKullanicisi kullanici = OturumKullanicisi.of(authentication);
+        List<Long> takimlar = kullanici.adminMi()
+                // ADMIN butun aktif takimlari gorur; token'inda teamIds
+                // olmayabilir, o yuzden kayitli takimlardan turetiyoruz.
+                ? teams.erisilebilirTakimlar(true, List.of()).stream().map(MailTeam::id).toList()
+                : kullanici.teamIds();
+        return documents.sonBelgeler(takimlar, limit);
+    }
+
+    /**
+     * Bir belge olusturulsaydi icerigi ne olurdu - HICBIR SEY YAZMADAN.
+     * Arayuz acilir acilmaz sag taraftaki sablonu bosken de cizebilsin diye.
+     *
+     * Yol "/{id}"den ONCE tanimli olmasi tesadufi degil ama sarti da degil:
+     * Spring duz metin parcayi ("default") degiskene ({id}) tercih eder, o
+     * yuzden bu iki yol cakismaz.
+     */
+    @GetMapping("/default")
+    public MailContent varsayilanIcerik(@RequestParam Long teamId,
+                                        @RequestParam TemplateType templateType,
+                                        Authentication authentication) {
+        OturumKullanicisi.of(authentication).dogrula(teamId);
+        return documents.varsayilanIcerik(teamId, templateType);
     }
 
     @GetMapping("/{id}")

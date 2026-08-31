@@ -6,10 +6,13 @@ import com.aksa.mailer.document.domain.DownloadFormat;
 import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.MailContentValidator;
 import com.aksa.mailer.document.domain.MailerDocument;
+import com.aksa.mailer.document.domain.TemplateType;
 import com.aksa.mailer.document.port.in.ManageMailerDocumentsUseCase;
 import com.aksa.mailer.document.port.out.MailerDocumentRepository;
 import com.aksa.mailer.document.port.out.MailerDocumentVersionRepository;
 import com.aksa.mailer.document.port.out.MailerDownloadLogRepository;
+import com.aksa.mailer.team.domain.MailTeam;
+import com.aksa.mailer.team.port.in.GetTeamsUseCase;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,22 +30,48 @@ public class MailerDocumentService implements ManageMailerDocumentsUseCase {
     private final MailerDocumentRepository documentRepository;
     private final MailerDocumentVersionRepository versionRepository;
     private final MailerDownloadLogRepository downloadLogRepository;
+    /**
+     * Yeni taslagin basligi ve takim etiketi takimin ADINDAN turetiliyor.
+     * Baska bir modulun port/in'i - port/out'una veya JPA repository'sine
+     * gidilmez (bkz. GetTeamsUseCase javadoc'u).
+     */
+    private final GetTeamsUseCase teams;
 
     public MailerDocumentService(MailerDocumentRepository documentRepository,
                                  MailerDocumentVersionRepository versionRepository,
-                                 MailerDownloadLogRepository downloadLogRepository) {
+                                 MailerDownloadLogRepository downloadLogRepository,
+                                 GetTeamsUseCase teams) {
         this.documentRepository = documentRepository;
         this.versionRepository = versionRepository;
         this.downloadLogRepository = downloadLogRepository;
+        this.teams = teams;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<DocumentSummary> takimBelgeleri(Long teamId) {
         return documentRepository.takimBelgeleri(teamId).stream()
-                .map(d -> new DocumentSummary(
-                        d.id(), d.teamId(), d.templateType(), d.title(),
-                        d.status().name(), d.currentVersion(), d.updatedBy(), d.updatedAt()))
+                .map(MailerDocumentService::ozet)
+                .toList();
+    }
+
+    private static DocumentSummary ozet(MailerDocument d) {
+        return new DocumentSummary(
+                d.id(), d.teamId(), d.templateType(), d.title(),
+                d.status().name(), d.currentVersion(), d.updatedBy(), d.updatedAt());
+    }
+
+    /** Giris sayfasi bir ekrana bu kadarini sigdirabiliyor. */
+    private static final int EN_FAZLA_SON_BELGE = 50;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DocumentSummary> sonBelgeler(List<Long> teamIds, int limit) {
+        // Ust sinir SUNUCUDA: istemci limit=100000 yollayip butun tabloyu
+        // cekemesin. Alt sinir da var - limit=0 sessizce bos liste dondururdu.
+        int sinir = Math.max(1, Math.min(limit, EN_FAZLA_SON_BELGE));
+        return documentRepository.sonBelgeler(teamIds, sinir).stream()
+                .map(MailerDocumentService::ozet)
                 .toList();
     }
 
@@ -54,11 +83,24 @@ public class MailerDocumentService implements ManageMailerDocumentsUseCase {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public MailContent varsayilanIcerik(Long teamId, TemplateType templateType) {
+        // Takimi cozmek iki isi birden goruyor: baslik/etiket adindan
+        // turetiliyor, ve olmayan bir teamId burada temiz 404 doner - eskiden
+        // olusturmada yabanci anahtar ihlaline dusup 500 olurdu.
+        MailTeam takim = teams.takim(teamId);
+        return VarsayilanIcerik.uret(templateType, takim.name());
+    }
+
+    @Override
     @Transactional
     public MailerDocument olustur(NewDocumentCommand komut) {
         // Taslak, tipin varsayilan icerigiyle DOGAR - istemci bos content
         // gondermez. Tek dogru kaynak sunucu (bkz. docs/api.md §3).
-        MailContent varsayilan = VarsayilanIcerik.uret(komut.templateType());
+        //
+        // GET /documents/default ile AYNI metot: arayuzun on izlemede
+        // gosterdigi iskelet ile kaydedilen belgenin icerigi ayrisamaz.
+        MailContent varsayilan = varsayilanIcerik(komut.teamId(), komut.templateType());
 
         MailerDocument taslak = MailerDocument.yeniTaslak(
                 komut.teamId(), komut.templateType(), komut.title(), varsayilan, komut.sicil());

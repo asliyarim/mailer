@@ -6,5 +6,7 @@ package com.aksa.mailer.document.domain;
  */
 public enum DownloadFormat {
     EML,
-    PDF
+    PDF,
+    /** "Outlook İçin Kopyala" - mail panoya alindi (V5). */
+    KOPYALA
 }

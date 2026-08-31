@@ -52,8 +52,9 @@ public class MailHtmlRenderer {
     private MailTemplate sablon(TemplateType tip) {
         MailTemplate sablon = sablonlar.get(tip);
         if (sablon == null) {
-            // Sprint 2'de PlanlamaTemplate ve YoneticiOzetiTemplate gelecek.
-            // O zamana kadar sessizce yanlis sablon uretmek yerine acikca soyle.
+            // Uc tipin de sablonu var; buraya ancak yeni bir TemplateType
+            // eklenip sablonu yazilmadan duserse gelinir. Sessizce yanlis
+            // sablon uretmek yerine acikca soyle.
             throw new DomainValidationException(
                     "Bu mail tipi henüz üretilemiyor: " + tip + ". Hazır tipler: " + sablonlar.keySet());
         }

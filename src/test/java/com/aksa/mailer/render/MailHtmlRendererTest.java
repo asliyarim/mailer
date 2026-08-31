@@ -160,7 +160,13 @@ class MailHtmlRendererTest {
         @Test
         @DisplayName("toplantı bilgisi yazılır")
         void toplantiBilgisi() {
-            assertThat(html).contains("Toplantı: 03.09.2026").contains("Yüz Yüze / Toplantı Salonu");
+            // Uc alan tek metne akmiyor, her biri kendi adresini tasiyor:
+            // kullanici saate tiklayip yazdiginda hangi alanin degistigi
+            // belirsiz kalmasin.
+            assertThat(html)
+                    .contains("Toplantı: ")
+                    .contains("<span data-alan=\"meeting.date\">03.09.2026</span>")
+                    .contains("<span data-alan=\"meeting.place\">Yüz Yüze / Toplantı Salonu</span>");
         }
 
         @Test

@@ -24,8 +24,14 @@ import {
   alanEtiketi,
   ALAN_NITELIGI,
   cokSatirliMi,
+  satirAdresiMi,
+  satirIndeksi,
+  satirSayisi,
+  secenekleriCoz,
+  SECENEK_NITELIGI,
 } from '../../lib/icerikYolu.js'
 import SatirIciDuzenleyici from './SatirIciDuzenleyici.jsx'
+import SatirAraclari from './SatirAraclari.jsx'
 
 // Her tusa basista istek atmamak icin bekleme suresi (docs/BRIEF.md §7).
 const GECIKME_MS = 300
@@ -64,13 +70,16 @@ export default function PreviewPane({
   hazirlaniyor,
   onHtml,
   onAlanDegisti,
+  onSatirIslemi,
 }) {
   const [html, setHtml] = useState('')
   const [hata, setHata] = useState(null)
   const [yenileniyor, setYenileniyor] = useState(false)
   const [yukseklik, setYukseklik] = useState(VARSAYILAN_YUKSEKLIK)
-  // Acik duzenleme kutusu: { adres, kutu, taslakDeger }
+  // Acik duzenleme kutusu: { adres, kutu, taslakDeger, secenekler }
   const [duzenlenen, setDuzenlenen] = useState(null)
+  // Secili satir: { adres, kutu } - satir araclari bunun yaninda cizilir.
+  const [seciliSatir, setSeciliSatir] = useState(null)
   const cerceveRef = useRef(null)
   // Duzenlenen elemanin iframe icindeki dugumu - kaydirmada yeniden olcmek icin.
   const hedefRef = useRef(null)
@@ -117,7 +126,7 @@ export default function PreviewPane({
     if (!onizlenebilir) return undefined
     // Duzenleme kutusu acikken YENILEME YOK: iframe yeniden yuklenirse
     // kutunun altindaki eleman kaybolur ve kutu bosluga bakar.
-    if (duzenlenen) return undefined
+    if (duzenlenen || seciliSatir) return undefined
 
     let iptal = false
     setYenileniyor(true)
@@ -144,7 +153,7 @@ export default function PreviewPane({
       iptal = true
       clearTimeout(zamanlayici)
     }
-  }, [teamId, templateType, content, onHtml, onizlenebilir, duzenlenen])
+  }, [teamId, templateType, content, onHtml, onizlenebilir, duzenlenen, seciliSatir])
 
   // --- tiklama: alani yakala ------------------------------------------------
 
@@ -168,24 +177,49 @@ export default function PreviewPane({
       // Bagimsiz sekmeye gitmesin, kart butonu tiklaninca gezinmesin.
       e.preventDefault()
 
-      // Gizli alanlar (karar numarasi) mailde CIZILIRKEN uretiliyor -
-      // duzenlenirse yazilan deger bir sonraki cizimde ezilir.
-      const sonParca = adres.split('.').pop()
-      if (GIZLI_ALANLAR.includes(sonParca)) return
-
       const kutu = kutuyuOlc(hedef)
       if (!kutu) return
       hedefRef.current = hedef
-      setDuzenlenen({ adres, kutu, taslakDeger: alandanOku(content, adres) ?? '' })
+
+      // SATIRIN KENDISI: <tr> de adresli. Bu adres bir NESNEYI gosterir;
+      // duzenleme kutusu acilirsa "[object Object]" yazar ve kaydedilirse
+      // satirin tamami bir metinle ezilirdi. Satir adresi araclara gider.
+      if (satirAdresiMi(adres)) {
+        setDuzenlenen(null)
+        setSeciliSatir({ adres, kutu })
+        return
+      }
+
+      // Gizli alanlar (karar numarasi) mailde CIZILIRKEN uretiliyor -
+      // duzenlenirse yazilan deger bir sonraki cizimde ezilir. Sunucu artik
+      // adres basmiyor ama filtre duruyor: yarin baska bir uretilen sutun
+      // eklenirse burasi hazir.
+      const sonParca = adres.split('.').pop()
+      if (GIZLI_ALANLAR.includes(sonParca)) return
+
+      // Beklenmedik bir adres metin disinda bir sey gosteriyorsa dokunma.
+      const deger = alandanOku(content, adres)
+      if (deger !== undefined && typeof deger !== 'string') return
+
+      setSeciliSatir(null)
+      setDuzenlenen({
+        adres,
+        kutu,
+        taslakDeger: deger ?? '',
+        // Secenek listesi SUNUCUDAN geliyor - istemcide ikinci kez yazilmiyor.
+        secenekler: secenekleriCoz(hedef.getAttribute(SECENEK_NITELIGI)),
+      })
     })
   }, [yuksekligiOlc, kutuyuOlc, onAlanDegisti, content])
 
-  // Panel kaydirilinca kutu elemanla birlikte gitsin.
+  // Panel kaydirilinca kutu/araclar elemanla birlikte gitsin.
   useEffect(() => {
-    if (!duzenlenen) return undefined
+    if (!duzenlenen && !seciliSatir) return undefined
     function yenidenKonumla() {
       const kutu = kutuyuOlc(hedefRef.current)
-      if (kutu) setDuzenlenen((o) => (o ? { ...o, kutu } : o))
+      if (!kutu) return
+      setDuzenlenen((o) => (o ? { ...o, kutu } : o))
+      setSeciliSatir((o) => (o ? { ...o, kutu } : o))
     }
     window.addEventListener('resize', yenidenKonumla)
     window.addEventListener('scroll', yenidenKonumla, true)
@@ -193,7 +227,25 @@ export default function PreviewPane({
       window.removeEventListener('resize', yenidenKonumla)
       window.removeEventListener('scroll', yenidenKonumla, true)
     }
-  }, [duzenlenen, kutuyuOlc])
+  }, [duzenlenen, seciliSatir, kutuyuOlc])
+
+  /**
+   * Satir islemi: ekle / kopyala / yukari / asagi / sil.
+   *
+   * Islemden sonra secim KAPANIYOR: satirlar yer degistirince indeksler
+   * kayiyor ve onizleme yeniden uretiliyor - eski dikdortgene yapisik bir
+   * arac cubugu yanlis satiri gosterirdi.
+   */
+  function satirIslemiYap(islem) {
+    if (!seciliSatir) return
+    if (islem === 'sil') {
+      const onay = window.confirm('Bu satır silinecek. Devam edilsin mi?')
+      if (!onay) return
+    }
+    onSatirIslemi?.(seciliSatir.adres, islem)
+    hedefRef.current = null
+    setSeciliSatir(null)
+  }
 
   function duzenlemeyiBitir() {
     if (!duzenlenen) return
@@ -256,11 +308,25 @@ export default function PreviewPane({
         </div>
       )}
 
+      {seciliSatir && (
+        <SatirAraclari
+          kutu={seciliSatir.kutu}
+          index={satirIndeksi(seciliSatir.adres)}
+          toplam={satirSayisi(content, seciliSatir.adres)}
+          onIslem={satirIslemiYap}
+          onKapat={() => {
+            hedefRef.current = null
+            setSeciliSatir(null)
+          }}
+        />
+      )}
+
       {duzenlenen && (
         <SatirIciDuzenleyici
           etiket={alanEtiketi(duzenlenen.adres)}
           deger={duzenlenen.taslakDeger}
           kutu={duzenlenen.kutu}
+          secenekler={duzenlenen.secenekler}
           cokSatirli={cokSatirliMi(duzenlenen.adres)}
           onDegisti={(deger) => setDuzenlenen((o) => ({ ...o, taslakDeger: deger }))}
           onBitti={duzenlemeyiBitir}

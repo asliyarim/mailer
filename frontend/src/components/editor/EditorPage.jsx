@@ -32,8 +32,8 @@ import {
   fetchTeams,
   saveDocument,
 } from '../../lib/apiClient.js'
-import { emptyContent, TEMPLATE_TYPES, validateContent } from '../../lib/mailContent.js'
-import { alanaYaz } from '../../lib/icerikYolu.js'
+import { emptyContent, emptyRow, TEMPLATE_TYPES, validateContent } from '../../lib/mailContent.js'
+import { alanaYaz, satirIslemi } from '../../lib/icerikYolu.js'
 import BelgeAyarlari from './BelgeAyarlari.jsx'
 import MetaForm from './MetaForm.jsx'
 import SectionList from './SectionList.jsx'
@@ -215,6 +215,17 @@ export default function EditorPage({ onDurum }) {
     setKaydedilmemis(true)
   }, [])
 
+  /**
+   * Önizlemede seçilen satır üzerinde işlem: ekle · çoğalt · yukarı · aşağı · sil.
+   *
+   * Soldaki kartlardaki "+ Satır ekle" / "Sil" ile AYNI veriyi değiştiriyor;
+   * yalnızca giriş noktası farklı.
+   */
+  const satirIslemiYapildi = useCallback((adres, islem) => {
+    setContent((onceki) => satirIslemi(onceki, adres, islem, emptyRow()))
+    setKaydedilmemis(true)
+  }, [])
+
   // --- taslak: takim / tip degisimi ----------------------------------------
 
   // Takim ya da tip degisince icerik iskeleti de degisiyor (baslik takimdan
@@ -330,6 +341,9 @@ export default function EditorPage({ onDurum }) {
         <TopActions
           taslak={taslakKipi}
           belge={belge}
+          teamId={teamId}
+          templateType={templateType}
+          content={content}
           kaydediliyor={kaydediliyor}
           kaydedilmemis={kaydedilmemis}
           hazir={formGoster}
@@ -427,6 +441,7 @@ export default function EditorPage({ onDurum }) {
           hazirlaniyor={!formGoster}
           onHtml={onizlemeGeldi}
           onAlanDegisti={alanDegisti}
+          onSatirIslemi={satirIslemiYapildi}
         />
       </section>
 

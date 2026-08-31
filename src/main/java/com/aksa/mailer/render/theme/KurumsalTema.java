@@ -30,6 +30,13 @@ final class KurumsalTema {
             "#48ac35", "#f7fbf4", "#328d2d", "#368f31", "#339131", "#43a437");
 
     /**
+     * Turuncu de rol rengi: "bekliyor / dikkat". Yesil gibi takima gore
+     * degismez - bekleyen is her takimda ayni sey demek.
+     */
+    private static final ToneColors TURUNCU = new ToneColors(
+            "#db6c12", "#fff7ef", "#b4560b", "#c05e0d", "#e07714", "#ef7a16");
+
+    /**
      * @param key         mail_teams.theme_key
      * @param displayName ekranda gorunen ad
      * @param ana         takimin kurumsal rengi - bolum basliklari ve sayaclar
@@ -53,6 +60,7 @@ final class KurumsalTema {
                 "#97d35d",
                 new ToneColors(ana, "#fbfdff", ana, ana, ana, ana),
                 YESIL,
+                TURUNCU,
                 new ThemeImage("hero", yol + "hero.png", 315, 235),
                 new ThemeImage("intro", yol + "intro.png", 120, 120),
                 new ThemeImage("notes", yol + "notes.png", 225, 151),
