@@ -1011,6 +1011,113 @@ textarea::placeholder {
   padding: 7px 9px;
 }
 
+/* ------------------------------------------------------- giriş sayfası */
+
+.tip-kartlari {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+/* Tip kartı: giriş sayfasındaki üç büyük seçim. Düğme olarak yazıldı,
+   klavyeyle gezilebilsin diye - tıklanabilir div değil. */
+.tip-karti {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  padding: 20px 18px 18px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--yuvarlak);
+  background: var(--panel);
+  box-shadow: var(--golge-kart);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.14s, box-shadow 0.14s, transform 0.14s;
+}
+
+.tip-karti:hover {
+  border-color: var(--mavi);
+  box-shadow: var(--golge-kalkik);
+  transform: translateY(-2px);
+}
+
+/* Üstteki renk şeridi tipin tonunu taşıyor - mailde de o renk çıkacak. */
+.tip-karti__ton {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  background: var(--mavi);
+}
+
+.tip-karti--green .tip-karti__ton {
+  background: var(--fistik);
+}
+
+.tip-karti--orange .tip-karti__ton {
+  background: #d97706;
+}
+
+.tip-karti__ad {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--lacivert);
+}
+
+.tip-karti__aciklama {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--murekkep-orta);
+}
+
+.tip-karti__icerik {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--soluk);
+}
+
+.tip-karti__eylem {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--mavi);
+}
+
+/* Son taslaklar listesindeki tip başlığı. */
+.grup-baslik {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--cizgi);
+  border-radius: var(--yuvarlak) var(--yuvarlak) 0 0;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mavi);
+  background: var(--mavi-soluk);
+}
+
+.grup-baslik--green {
+  color: var(--yesil);
+  background: var(--yesil-soluk);
+}
+
+.grup-baslik--orange {
+  color: #a15208;
+  background: #fdf3e6;
+}
+
+.grup-baslik__sayi {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 11.5px;
+}
+
 /* ---------------------------------------------------- satır araçları */
 
 /* Önizlemede seçilen satırın yanındaki araç çubuğu. Referans uygulamada bu

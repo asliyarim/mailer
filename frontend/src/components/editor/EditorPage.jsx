@@ -4,7 +4,8 @@
 //
 // IKI KIP:
 //
-//   /            TASLAK. Uygulama acildiginda gelen hal. Ortada BELGE YOK,
+//   /editor/yeni TASLAK. Giris sayfasindan tip secilince gelinen hal.
+//                Ortada BELGE YOK,
 //                veritabanina hicbir sey yazilmadi. Icerik sunucudan
 //                varsayilan olarak aliniyor (GET /documents/default), sag
 //                panelde sablonun tamami bastan gorunuyor. Belge ancak
@@ -24,7 +25,7 @@
 // cunku "PDF / Yazdir" ayni HTML'i yazdiriyor - ikinci bir uretim YOK.
 
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   createDocument,
   fetchDefaultContent,
@@ -68,6 +69,7 @@ function sonTakimiYaz(teamId) {
 export default function EditorPage({ onDurum }) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [aramaParametreleri] = useSearchParams()
 
   const [teams, setTeams] = useState([])
   const [belge, setBelge] = useState(null)
@@ -128,13 +130,21 @@ export default function EditorPage({ onDurum }) {
         const hatirlanan = sonTakimiOku()
         const teamId = takimlar.some((t) => t.id === hatirlanan) ? hatirlanan : takimlar[0].id
 
+        // Tip giris sayfasindan geliyor (/editor/yeni?tip=...). Adres cubugu
+        // elle degistirilebilir, o yuzden dogruluyoruz - taninmayan bir tip
+        // sunucuda 400'e duserdi.
+        const istenen = aramaParametreleri.get('tip')
+        const templateType = Object.values(TEMPLATE_TYPES).includes(istenen)
+          ? istenen
+          : TEMPLATE_TYPES.KAPANIS
+
         // Bos iskelet SUNUCUDAN gelir - istemcide kurulmaz (Mimari Kural 4).
-        const varsayilan = await fetchDefaultContent(teamId, TEMPLATE_TYPES.KAPANIS)
+        const varsayilan = await fetchDefaultContent(teamId, templateType)
         if (iptal) return
 
         setTaslak({
           teamId,
-          templateType: TEMPLATE_TYPES.KAPANIS,
+          templateType,
           title: '',
           subject: '',
         })
@@ -152,7 +162,7 @@ export default function EditorPage({ onDurum }) {
     return () => {
       iptal = true
     }
-  }, [id])
+  }, [id, aramaParametreleri])
 
   // Kayitli belge kipinde de takimlara ihtiyac var (kunye etiketi).
   useEffect(() => {
@@ -316,6 +326,7 @@ export default function EditorPage({ onDurum }) {
       if (!onay) return
     }
     setKaydedilmemis(false)
+    // Giris sayfasina: yeni mailin tipi orada seciliyor.
     navigate('/')
   }
 

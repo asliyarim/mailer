@@ -196,6 +196,23 @@ export async function fetchDefaultContent(teamId, templateType) {
   return response.json();
 }
 
+/**
+ * Giris sayfasindaki "Son Taslaklarım" - kullanicinin erisebildigi BUTUN
+ * takimlarin belgeleri, en yeni once (docs/api.md).
+ *
+ * teamId parametresi YOK: sunucu oturumun kendi takimlarindan turetiyor.
+ * documents?teamId= tek takim istiyor; PO'nun birden cok takimi olabildigi
+ * icin giris sayfasi orada N ayri istek atmak zorunda kalirdi.
+ */
+export async function fetchRecentDocuments(limit = 12) {
+  const response = await authFetch(
+    `/api/mailer/documents/recent?limit=${encodeURIComponent(limit)}`,
+    getInit
+  );
+  await ensureOk(response, "Son belgeler alınamadı.");
+  return response.json();
+}
+
 export async function fetchDocument(id) {
   const response = await authFetch(`/api/mailer/documents/${id}`, getInit);
   await ensureOk(response, "Belge alınamadı.");

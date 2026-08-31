@@ -3,14 +3,15 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { fetchCurrentUser } from './lib/apiClient.js'
 import TopBar from './components/shared/TopBar.jsx'
 import DocumentListPage from './components/shared/DocumentListPage.jsx'
+import GirisSayfasi from './components/shared/GirisSayfasi.jsx'
 import EditorPage from './components/editor/EditorPage.jsx'
 
-// Rotalar: / · /belgeler · /editor/:id
+// Rotalar: / · /belgeler · /editor/yeni · /editor/:id
 //
-// "/" DOGRUDAN EDITORU acar - karsilama ekrani yok. Kabuktan uygulamaya
-// girildiginde kullanici formun basinda olsun diye (Aslı'nin karari).
-// Hangi belgenin acilacagini EditorPage cozer: en son guncellenen belge,
-// hic belge yoksa sol bardaki olusturma karti.
+// "/" GIRIS SAYFASI: uc mail tipi karti + son taslaklar. Tip, belgenin
+// seklini belirleyen ve kaydedildikten sonra DEGISTIRILEMEYEN tek karar -
+// kullanicinin ilk isi o secim olsun. Secince /editor/yeni?tip=... acilir
+// ve editor bos bir taslakla gelir; belge ancak "Kaydet"te dogar.
 //
 // basename normalde Vite'in base'i (/mailer/) - kabuk icinde o onekten
 // servis ediliyoruz. Ama uygulamaya DOGRUDAN kokten girildiginde (yerelde
@@ -72,10 +73,12 @@ export default function App() {
     <BrowserRouter basename={BASENAME}>
       <TopBar user={user} durum={kayitDurumu?.metin} durumUyari={kayitDurumu?.uyari} />
       <Routes>
-        <Route path="/" element={<EditorPage user={user} onDurum={durumBildir} />} />
+        <Route path="/" element={<GirisSayfasi user={user} />} />
         <Route path="/belgeler" element={<DocumentListPage user={user} />} />
+        {/* "yeni" statik bir parca oldugu icin /editor/:id'den once eslesir. */}
+        <Route path="/editor/yeni" element={<EditorPage user={user} onDurum={durumBildir} />} />
         <Route path="/editor/:id" element={<EditorPage user={user} onDurum={durumBildir} />} />
-        {/* Eski yer imleri ve /editor/new bagi kirilmasin. */}
+        {/* Eski yer imleri kirilmasin. */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
