@@ -58,6 +58,26 @@ export const ROW_FIELD_LABELS = {
 export const KONU_TURLERI = ["Hikaye", "Görev", "Bug", "İyileştirme", "Diğer"];
 
 /**
+ * Sektörler (v6.1'den).
+ *
+ * Serbest metin DEĞİL, liste: Sprint Kapanış tablosu satırları SEKTÖRE GÖRE
+ * GRUPLANIYOR. "Elektrik" ile "elektrik" serbest metin olsaydı mailde iki
+ * ayrı grup başlığı çıkardı ve kimse sebebini anlamazdı.
+ *
+ * Listede olmayan bir değer (eski kayıt, elle girilmiş) SİLİNMEZ: RowCard
+ * onu seçeneklere ekleyip gösterir.
+ */
+export const SEKTORLER = [
+  "Holding",
+  "Doğalgaz",
+  "Elektrik",
+  "Enerji",
+  "Jeneratör",
+  "Hospitality",
+  "Diğer",
+];
+
+/**
  * Mail tipine göre varsayılan sütunlar. Gövde 760px sabit; altı sütundan
  * fazlası Outlook'ta okunmaz hale geliyor, o yüzden geri kalanlar varsayılan
  * olarak KAPALI. İhtiyacı olan takım `columns`'a ekler — satırda olup

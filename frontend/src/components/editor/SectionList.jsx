@@ -103,7 +103,10 @@ export default function SectionList({ sections, templateType, onChange }) {
         const sutunlar =
           bolum.columns ?? VARSAYILAN_SUTUNLAR[templateType] ?? VARSAYILAN_SUTUNLAR.KAPANIS
         return (
-          <div className="bolum" key={bolum.key}>
+          <div
+            className={bolum.tone === 'green' ? 'bolum bolum--green' : 'bolum'}
+            key={bolum.key}
+          >
             <div className="bolum__ust">
               <span className={`nokta nokta--${bolum.tone}`} aria-hidden="true" />
               <input
@@ -126,16 +129,22 @@ export default function SectionList({ sections, templateType, onChange }) {
             <div className="satir-arasi" style={{ marginBottom: 12 }}>
               <span className="alan__etiket">Renk tonu</span>
               <div className="seg-grup">
-                {TON_SECENEKLERI.map((secenek) => (
-                  <button
-                    key={secenek.deger}
-                    type="button"
-                    className={bolum.tone === secenek.deger ? 'seg seg--secili' : 'seg'}
-                    onClick={() => bolumGuncelle(bolumIndex, { ...bolum, tone: secenek.deger })}
-                  >
-                    {secenek.etiket}
-                  </button>
-                ))}
+                {TON_SECENEKLERI.map((secenek) => {
+                  const secili = bolum.tone === secenek.deger
+                  const siniflar = ['seg']
+                  if (secenek.deger === 'green') siniflar.push('seg--yesil')
+                  if (secili) siniflar.push('seg--secili')
+                  return (
+                    <button
+                      key={secenek.deger}
+                      type="button"
+                      className={siniflar.join(' ')}
+                      onClick={() => bolumGuncelle(bolumIndex, { ...bolum, tone: secenek.deger })}
+                    >
+                      {secenek.etiket}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -153,6 +162,7 @@ export default function SectionList({ sections, templateType, onChange }) {
                 row={satir}
                 columns={sutunlar}
                 sira={satirIndex + 1}
+                tone={bolum.tone}
                 onChange={(yeni) => satirGuncelle(bolumIndex, satirIndex, yeni)}
                 onSil={() => satirSil(bolumIndex, satirIndex)}
               />

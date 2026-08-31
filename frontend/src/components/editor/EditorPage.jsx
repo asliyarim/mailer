@@ -2,7 +2,21 @@
 // icinde icerik tutmaz, deger + onChange alir. Yeni bir form alani eklerken
 // durumu buraya koy, bilesenin icine degil.
 //
-// Sol panel numarali kartlardan olusur (docs/BRIEF.md §2):
+// IKI KIP:
+//
+//   /            TASLAK. Uygulama acildiginda gelen hal. Ortada BELGE YOK,
+//                veritabanina hicbir sey yazilmadi. Icerik sunucudan
+//                varsayilan olarak aliniyor (GET /documents/default), sag
+//                panelde sablonun tamami bastan gorunuyor. Belge ancak
+//                "Kaydet" dendiginde dogar.
+//
+//   /editor/:id  KAYITLI belge.
+//
+// Neden taslak kipi var: acilista eski bir belgenin acilmasi kullaniciya
+// mantiksiz geldi (Aslı) - maili yazmaya gelen kisi bos bir form bekliyor.
+// Her acilista belge yaratmak ise DB'de cop taslak biriktirirdi.
+//
+// Sol panel numarali kartlardan olusur:
 //   1 · Belge ayarlari    2 · Mail bilgileri
 //   3 · Bolumler          4 · Alt notlar
 //
@@ -11,7 +25,13 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { fetchDocument, saveDocument } from '../../lib/apiClient.js'
+import {
+  createDocument,
+  fetchDefaultContent,
+  fetchDocument,
+  fetchTeams,
+  saveDocument,
+} from '../../lib/apiClient.js'
 import { emptyContent, TEMPLATE_TYPES, validateContent } from '../../lib/mailContent.js'
 import BelgeAyarlari from './BelgeAyarlari.jsx'
 import MetaForm from './MetaForm.jsx'
@@ -21,42 +41,142 @@ import PreviewPane from './PreviewPane.jsx'
 import TopActions from './TopActions.jsx'
 import VersiyonGecmisi from './VersiyonGecmisi.jsx'
 
+// Son kullanilan takim tarayicida hatirlanir: RPA'da calisan biri her
+// acilista listenin basindaki takimi degil kendi takimini bulsun.
+// Sunucuda tutulacak bir tercih degil - kisiye ve tarayiciya ozel kolaylik.
+const SON_TAKIM_ANAHTARI = 'aksa-mailer.son-takim'
+
+function sonTakimiOku() {
+  try {
+    const deger = window.localStorage.getItem(SON_TAKIM_ANAHTARI)
+    return deger ? Number(deger) : null
+  } catch {
+    // gizli sekme / site verisi kapali - listenin ilk takimina duseriz
+    return null
+  }
+}
+
+function sonTakimiYaz(teamId) {
+  try {
+    window.localStorage.setItem(SON_TAKIM_ANAHTARI, String(teamId))
+  } catch {
+    // yazamiyorsak hatirlamayiz, akis bozulmaz
+  }
+}
+
 export default function EditorPage({ onDurum }) {
   const { id } = useParams()
   const navigate = useNavigate()
 
+  const [teams, setTeams] = useState([])
   const [belge, setBelge] = useState(null)
   const [content, setContent] = useState(emptyContent())
+  // Taslak kipinde belge alanlarinin karsiligi. Kayitli kipte kullanilmaz.
+  const [taslak, setTaslak] = useState({
+    teamId: null,
+    templateType: TEMPLATE_TYPES.KAPANIS,
+    title: '',
+    subject: '',
+  })
   const [hatalar, setHatalar] = useState([])
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [kaydedilmemis, setKaydedilmemis] = useState(false)
   const [gecmisAcik, setGecmisAcik] = useState(false)
+  const [aciliyor, setAciliyor] = useState(true)
   // Sunucudan gelen HAZIR onizleme HTML'i. Yazdirma bunu kullanir.
   const [onizlemeHtml, setOnizlemeHtml] = useState('')
 
+  const taslakKipi = !id
+
+  // --- kayitli belge yukleme ------------------------------------------------
+
   useEffect(() => {
     if (!id) return
+    setAciliyor(true)
     fetchDocument(id)
       .then((d) => {
         setBelge(d)
         setContent(d.content)
         setKaydedilmemis(false)
+        setHatalar([])
+        sonTakimiYaz(d.teamId)
       })
       .catch((e) => setHatalar([e.message]))
+      .finally(() => setAciliyor(false))
   }, [id])
 
-  // Ust seritteki kayit rozeti. Editörden cikinca rozet kalkar.
+  // --- taslak kipi: takimlar + varsayilan icerik ----------------------------
+
+  useEffect(() => {
+    if (id) return undefined
+    let iptal = false
+
+    async function taslakKur() {
+      setAciliyor(true)
+      setBelge(null)
+      try {
+        const takimlar = await fetchTeams()
+        if (iptal) return
+        setTeams(takimlar)
+
+        if (takimlar.length === 0) {
+          setHatalar(['Erişebileceğiniz bir takım yok. Yöneticinize danışın.'])
+          return
+        }
+
+        const hatirlanan = sonTakimiOku()
+        const teamId = takimlar.some((t) => t.id === hatirlanan) ? hatirlanan : takimlar[0].id
+
+        // Bos iskelet SUNUCUDAN gelir - istemcide kurulmaz (Mimari Kural 4).
+        const varsayilan = await fetchDefaultContent(teamId, TEMPLATE_TYPES.KAPANIS)
+        if (iptal) return
+
+        setTaslak({
+          teamId,
+          templateType: TEMPLATE_TYPES.KAPANIS,
+          title: '',
+          subject: '',
+        })
+        setContent(varsayilan)
+        setKaydedilmemis(false)
+        setHatalar([])
+      } catch (e) {
+        if (!iptal) setHatalar([e.message])
+      } finally {
+        if (!iptal) setAciliyor(false)
+      }
+    }
+
+    taslakKur()
+    return () => {
+      iptal = true
+    }
+  }, [id])
+
+  // Kayitli belge kipinde de takimlara ihtiyac var (kunye etiketi).
+  useEffect(() => {
+    if (!id) return
+    fetchTeams()
+      .then(setTeams)
+      .catch(() => {
+        // kunye etiketi eksik kalir, editor calismaya devam eder
+      })
+  }, [id])
+
+  // --- ust seritteki kayit rozeti ------------------------------------------
+
   useEffect(() => {
     if (!onDurum) return undefined
     if (kaydediliyor) onDurum({ metin: 'Kaydediliyor…' })
+    else if (taslakKipi) onDurum({ metin: 'Kaydedilmemiş taslak', uyari: true })
     else if (kaydedilmemis) onDurum({ metin: 'Kaydedilmemiş değişiklik', uyari: true })
     else if (belge) onDurum({ metin: 'Kaydedildi' })
     else onDurum(null)
     return () => onDurum(null)
-  }, [onDurum, belge, kaydediliyor, kaydedilmemis])
+  }, [onDurum, belge, kaydediliyor, kaydedilmemis, taslakKipi])
 
-  // Tarayici sekmesi kapatilirken uyar. Kaydedilmemis mail, doldurulmasi
-  // 20 dakika suren bir form - sessizce kaybolmasin.
+  // Tarayici sekmesi kapatilirken uyar. Doldurulmus ama kaydedilmemis bir
+  // mail sessizce kaybolmasin.
   useEffect(() => {
     if (!kaydedilmemis) return undefined
     function ayrilmadanOnce(e) {
@@ -66,6 +186,8 @@ export default function EditorPage({ onDurum }) {
     window.addEventListener('beforeunload', ayrilmadanOnce)
     return () => window.removeEventListener('beforeunload', ayrilmadanOnce)
   }, [kaydedilmemis])
+
+  // --- icerik guncelleme ----------------------------------------------------
 
   // Icerigin bir dalini gunceller: patch('header', { title: '...' })
   function patch(alan, deger) {
@@ -78,12 +200,37 @@ export default function EditorPage({ onDurum }) {
     setKaydedilmemis(true)
   }
 
-  function belgeDegisti(alanlar) {
-    setBelge((o) => ({ ...o, ...alanlar }))
-    setKaydedilmemis(true)
+  const onizlemeGeldi = useCallback((html) => setOnizlemeHtml(html), [])
+
+  // --- taslak: takim / tip degisimi ----------------------------------------
+
+  // Takim ya da tip degisince icerik iskeleti de degisiyor (baslik takimdan
+  // turetiliyor, bolumler tipe gore). Sunucudan yeniden aliyoruz - istemcide
+  // "su alani su yap" diye yamamak iki tanim demek olurdu.
+  async function taslakYapisiDegisti(yeniAlanlar) {
+    const yeniTeamId = yeniAlanlar.teamId ?? taslak.teamId
+    const yeniTip = yeniAlanlar.templateType ?? taslak.templateType
+
+    if (kaydedilmemis) {
+      const onay = window.confirm(
+        'Bu maile girdikleriniz sıfırlanacak; şablon yeniden kurulacak. Devam edilsin mi?'
+      )
+      if (!onay) return
+    }
+
+    setHatalar([])
+    try {
+      const varsayilan = await fetchDefaultContent(yeniTeamId, yeniTip)
+      setTaslak((o) => ({ ...o, ...yeniAlanlar }))
+      setContent(varsayilan)
+      setKaydedilmemis(false)
+      sonTakimiYaz(yeniTeamId)
+    } catch (e) {
+      setHatalar([e.message])
+    }
   }
 
-  const onizlemeGeldi = useCallback((html) => setOnizlemeHtml(html), [])
+  // --- kaydetme -------------------------------------------------------------
 
   async function kaydet() {
     const bulunanHatalar = validateContent(content)
@@ -92,6 +239,30 @@ export default function EditorPage({ onDurum }) {
 
     setKaydediliyor(true)
     try {
+      if (taslakKipi) {
+        // Belge BURADA doguyor. Once POST (sunucu varsayilan icerikle
+        // yaratir), hemen ardindan PUT ile kullanicinin yazdigi icerik.
+        // Baslik bos birakilmissa mailin kendi basligini kullaniyoruz -
+        // POST title'i @NotBlank istiyor ve kullaniciyi bos bir zorunlu
+        // alanla karsilamak istemiyoruz.
+        const ad = taslak.title.trim() || content.header?.title?.trim() || 'Yeni mail'
+        const yeni = await createDocument({
+          teamId: taslak.teamId,
+          templateType: taslak.templateType,
+          title: ad,
+        })
+        const kaydedilen = await saveDocument(yeni.id, {
+          title: ad,
+          subject: taslak.subject,
+          content,
+          expectedVersion: yeni.currentVersion,
+        })
+        setKaydedilmemis(false)
+        setBelge(kaydedilen)
+        navigate(`/editor/${kaydedilen.id}`)
+        return
+      }
+
       const kaydedilen = await saveDocument(belge.id, {
         title: belge.title,
         subject: belge.subject,
@@ -113,6 +284,17 @@ export default function EditorPage({ onDurum }) {
     }
   }
 
+  function yeniMail() {
+    if (kaydedilmemis) {
+      const onay = window.confirm(
+        'Kaydedilmemiş değişiklikler kaybolacak. Yeni maile geçilsin mi?'
+      )
+      if (!onay) return
+    }
+    setKaydedilmemis(false)
+    navigate('/')
+  }
+
   function geriAlindi(guncelBelge) {
     setBelge(guncelBelge)
     setContent(guncelBelge.content)
@@ -120,37 +302,45 @@ export default function EditorPage({ onDurum }) {
     setHatalar([])
   }
 
-  if (!belge) {
-    return (
-      <div className="durum-ekrani">
-        {hatalar.length > 0 ? (
-          <div>
-            <p className="bos-durum__baslik">Belge açılamadı</p>
-            <p className="bos-durum__metin">{hatalar[0]}</p>
-            <button className="btn btn--ikincil" onClick={() => navigate('/belgeler')}>
-              Belgelerime dön
-            </button>
-          </div>
-        ) : (
-          <p>Yükleniyor…</p>
-        )}
-      </div>
-    )
-  }
+  // --- cizim ----------------------------------------------------------------
 
-  const templateType = belge.templateType ?? TEMPLATE_TYPES.KAPANIS
+  const teamId = taslakKipi ? taslak.teamId : belge?.teamId
+  const templateType = taslakKipi
+    ? taslak.templateType
+    : (belge?.templateType ?? TEMPLATE_TYPES.KAPANIS)
+  const takim = teams.find((t) => t.id === teamId)
+  const formGoster = taslakKipi ? taslak.teamId != null : Boolean(belge)
 
   return (
     <div className="uygulama">
       <section className="panel panel--editor">
         <TopActions
+          taslak={taslakKipi}
           belge={belge}
           kaydediliyor={kaydediliyor}
           kaydedilmemis={kaydedilmemis}
+          hazir={formGoster}
           onizlemeHtml={onizlemeHtml}
           onKaydet={kaydet}
-          onListe={() => navigate('/belgeler')}
         />
+
+        {/* Künye: aracın hangi birime ait olduğunu söyleyen tek koyu yüzey.
+            Mailin hero şeridiyle aynı dili konuşur, panel baştan sona beyaz
+            kart dizisi gibi durmasın. */}
+        <div className="kunye">
+          <p className="kunye__baslik">Dijital Uygulamalar &amp; Ürün Geliştirme</p>
+          <p className="kunye__alt">
+            Sprint kapanış ve planlama maillerini elle HTML yazmadan hazırlayın.
+            Soldaki kartları doldurun, sağdaki önizleme Outlook'ta göreceğiniz
+            mailin ta kendisidir.
+          </p>
+          {takim && (
+            <div className="kunye__etiketler">
+              <span className="kunye__etiket">{takim.name}</span>
+              <span className="kunye__etiket">Tema: {takim.themeKey}</span>
+            </div>
+          )}
+        </div>
 
         {hatalar.length > 0 && (
           <div className="uyari uyari--hata">
@@ -162,51 +352,79 @@ export default function EditorPage({ onDurum }) {
           </div>
         )}
 
-        <BelgeAyarlari
-          belge={belge}
-          onDegisti={belgeDegisti}
-          onVersiyonlar={() => setGecmisAcik(true)}
-        />
+        {aciliyor && !formGoster && <p className="sessiz-metin">Yükleniyor…</p>}
 
-        <MetaForm
-          header={content.header}
-          meeting={content.meeting}
-          intro={content.intro}
-          onHeaderChange={(d) => patch('header', d)}
-          onMeetingChange={(d) => patch('meeting', d)}
-          onIntroChange={(intro) => icerikDegisti((o) => ({ ...o, intro }))}
-        />
+        {formGoster && (
+          <>
+            <BelgeAyarlari
+              taslak={taslakKipi}
+              teams={teams}
+              teamId={teamId}
+              templateType={templateType}
+              title={taslakKipi ? taslak.title : belge.title}
+              subject={taslakKipi ? taslak.subject : belge.subject}
+              surum={belge?.currentVersion}
+              onTeamId={(yeni) => taslakYapisiDegisti({ teamId: yeni })}
+              onTemplateType={(yeni) => taslakYapisiDegisti({ templateType: yeni })}
+              onTitle={(deger) => {
+                if (taslakKipi) setTaslak((o) => ({ ...o, title: deger }))
+                else setBelge((o) => ({ ...o, title: deger }))
+                setKaydedilmemis(true)
+              }}
+              onSubject={(deger) => {
+                if (taslakKipi) setTaslak((o) => ({ ...o, subject: deger }))
+                else setBelge((o) => ({ ...o, subject: deger }))
+                setKaydedilmemis(true)
+              }}
+              onVersiyonlar={() => setGecmisAcik(true)}
+              onYeniMail={yeniMail}
+            />
 
-        <SectionList
-          sections={content.sections}
-          templateType={templateType}
-          onChange={(sections) => icerikDegisti((o) => ({ ...o, sections }))}
-        />
+            <MetaForm
+              takimAdlari={teams.map((t) => t.name)}
+              header={content.header}
+              meeting={content.meeting}
+              intro={content.intro}
+              onHeaderChange={(d) => patch('header', d)}
+              onMeetingChange={(d) => patch('meeting', d)}
+              onIntroChange={(intro) => icerikDegisti((o) => ({ ...o, intro }))}
+            />
 
-        <NotesForm
-          notes={content.notes}
-          footer={content.footer}
-          onNotesChange={(notes) => icerikDegisti((o) => ({ ...o, notes }))}
-          onFooterChange={(d) => patch('footer', d)}
-        />
+            <SectionList
+              sections={content.sections}
+              templateType={templateType}
+              onChange={(sections) => icerikDegisti((o) => ({ ...o, sections }))}
+            />
+
+            <NotesForm
+              notes={content.notes}
+              footer={content.footer}
+              onNotesChange={(notes) => icerikDegisti((o) => ({ ...o, notes }))}
+              onFooterChange={(d) => patch('footer', d)}
+            />
+          </>
+        )}
       </section>
 
       <section className="panel panel--onizleme">
         <PreviewPane
-          teamId={belge.teamId}
+          teamId={teamId}
           templateType={templateType}
           content={content}
+          hazirlaniyor={!formGoster}
           onHtml={onizlemeGeldi}
         />
       </section>
 
-      <VersiyonGecmisi
-        acik={gecmisAcik}
-        documentId={belge.id}
-        guncelSurum={belge.currentVersion}
-        onKapat={() => setGecmisAcik(false)}
-        onGeriAlindi={geriAlindi}
-      />
+      {belge && (
+        <VersiyonGecmisi
+          acik={gecmisAcik}
+          documentId={belge.id}
+          guncelSurum={belge.currentVersion}
+          onKapat={() => setGecmisAcik(false)}
+          onGeriAlindi={geriAlindi}
+        />
+      )}
     </div>
   )
 }

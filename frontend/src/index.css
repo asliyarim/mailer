@@ -5,48 +5,53 @@
  * Mailin görünümünü değiştirmek için backend'deki tema/şablon sınıfları
  * düzenlenir — burası sadece EDİTÖRÜN görünümü.
  *
- * Renkler RpaTheme'den alındı (#003b78 lacivert, #48ac35 yeşil, #eef4f9
- * zemin). Sebep: araç ile ürettiği mail aynı dünyaya ait görünsün; kullanıcı
- * soldaki formdan sağdaki maile bakarken renk kırılması yaşamasın.
+ * Görsel dil V6.1 prototipinden (RPA_Sprint_Mail_Generator_V6_1.html):
+ * yuvarlak kartlar, mavi kart başlıkları, hap biçimli seçim düğmeleri,
+ * tona göre renklenen satır kartları. Renkler RpaTheme ile uyumlu tutuldu
+ * ki araç ile ürettiği mail aynı dünyaya ait görünsün.
  *
  * Yazı tipi sistem yığını — web fontu YOK. Uygulama kurumsal ağda, Odyssey
  * kabuğunun iframe'i içinde çalışıyor; harici font sunucusu engellenirse
- * sessizce başka bir yazı tipine düşer. Segoe UI zaten hedef kitlenin
- * Outlook'ta gördüğü yazı tipi.
+ * sessizce başka bir yazı tipine düşer.
  */
 
 :root {
   /* Kimlik */
-  --lacivert: #003b78;
-  --lacivert-koyu: #002d5c;
+  --lacivert: #063b78;
+  --lacivert-koyu: #04274f;
   --mavi: #0b4aa2;
-  --mavi-soluk: #e8f0fa;
+  --mavi-soluk: #e9f1fa;
+  --mavi-cizgi: #cddff2;
   --yesil: #3f8f2e;
-  --yesil-soluk: #eff7ea;
-  --fistik: #95d05d;
+  --yesil-soluk: #f1f8ec;
+  --fistik: #79a928;
 
   /* Zeminler — nötrler laciverde doğru kırıldı, düz gri değil */
   --zemin: #eef3f8;
   --panel: #ffffff;
   --panel-soluk: #f7fafd;
-  --cizgi: #d7e3ef;
-  --cizgi-soluk: #e6edf5;
+  --cizgi: #dce5ef;
+  --cizgi-soluk: #e8eef6;
 
   /* Metin */
-  --murekkep: #10233f;
-  --murekkep-orta: #3d5169;
-  --soluk: #5f7186;
+  --murekkep: #172033;
+  --murekkep-orta: #475569;
+  --soluk: #68778a;
 
   /* Durum */
   --hata: #b42318;
   --hata-zemin: #fdecec;
+  --hata-cizgi: #f3cbc7;
   --dikkat: #8a5a09;
-  --dikkat-zemin: #fdf5e6;
+  --dikkat-zemin: #fdf6e8;
+  --dikkat-cizgi: #efdcb6;
 
-  --golge: 0 10px 28px rgba(15, 42, 78, 0.06);
-  --yuvarlak: 14px;
+  --golge-kart: 0 10px 28px rgba(15, 42, 78, 0.055);
+  --golge-kalkik: 0 16px 40px rgba(15, 42, 78, 0.14);
+  --yuvarlak: 18px;
+  --yuvarlak-kucuk: 11px;
 
-  font-family: "Segoe UI", -apple-system, "Inter", Arial, Helvetica, sans-serif;
+  font-family: "Segoe UI", -apple-system, Arial, Helvetica, sans-serif;
   font-size: 14px;
   color: var(--murekkep);
   color-scheme: light;
@@ -63,7 +68,9 @@ body {
 
 body {
   margin: 0;
-  background: var(--zemin);
+  /* Düz gri yerine laciverde çalan çok hafif bir geçiş - panel kenarları
+     zeminden ayrışsın, ekran "boş beyaz" görünmesin. */
+  background: linear-gradient(180deg, #e8eff7 0%, var(--zemin) 240px);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -90,7 +97,7 @@ textarea {
   padding: 12px 20px;
   background: linear-gradient(92deg, var(--lacivert-koyu), var(--mavi));
   color: #fff;
-  box-shadow: 0 6px 22px rgba(0, 45, 92, 0.22);
+  box-shadow: 0 8px 30px rgba(6, 59, 120, 0.22);
   position: relative;
   z-index: 5;
 }
@@ -105,26 +112,26 @@ textarea {
 /* Marka işareti: mail zarfı. Emoji değil — kurumsal ekranda emoji ucuz durur
    ve platforma göre farklı çizilir. */
 .ust-serit__isaret {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.14);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .ust-serit__ad {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
   letter-spacing: 0.2px;
   line-height: 1.1;
 }
 
 .ust-serit__alt {
   font-size: 11.5px;
-  opacity: 0.82;
+  opacity: 0.85;
   margin-top: 3px;
 }
 
@@ -142,14 +149,37 @@ textarea {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 260px;
+  max-width: 220px;
+}
+
+/* Üst şeritteki düğme (Belgelerim): koyu zemin üzerinde cam etkisi. */
+.ust-serit__eylem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+
+.ust-serit__eylem:hover {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.45);
 }
 
 /* Durum rozeti — kaydedilmemiş değişiklik burada da görünür. */
 .rozet {
   font-size: 11.5px;
   font-weight: 700;
-  padding: 5px 11px;
+  padding: 6px 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -157,8 +187,8 @@ textarea {
 }
 
 .rozet--uyari {
-  background: rgba(255, 214, 138, 0.22);
-  border-color: rgba(255, 214, 138, 0.45);
+  background: rgba(255, 214, 138, 0.24);
+  border-color: rgba(255, 214, 138, 0.5);
   color: #ffe6bb;
 }
 
@@ -170,7 +200,7 @@ textarea {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(480px, 580px) minmax(0, 1fr);
+  grid-template-columns: minmax(500px, 590px) minmax(0, 1fr);
 }
 
 .panel {
@@ -183,7 +213,7 @@ textarea {
 }
 
 .panel--editor {
-  background: var(--panel-soluk);
+  background: rgba(248, 250, 252, 0.86);
   border-right: 1px solid var(--cizgi);
   display: flex;
   flex-direction: column;
@@ -191,11 +221,11 @@ textarea {
 }
 
 .panel--onizleme {
-  background: var(--zemin);
+  background: rgba(232, 238, 245, 0.68);
   padding-top: 14px;
 }
 
-/* Tek sütunlu sayfalar (belge listesi, yeni belge formu). */
+/* Tek sütunlu sayfalar (belge listesi). */
 .sayfa {
   flex: 1;
   overflow-y: auto;
@@ -210,14 +240,10 @@ textarea {
   gap: 16px;
 }
 
-.sayfa__ic--dar {
-  max-width: 620px;
-}
-
 .sayfa__baslik {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 21px;
+  font-weight: 800;
   letter-spacing: -0.2px;
 }
 
@@ -227,14 +253,58 @@ textarea {
   color: var(--soluk);
 }
 
+/* ------------------------------------------------------------- künye kartı */
+
+/* V6.1'deki üst kart: aracın kime ait olduğunu söyleyen kimlik şeridi.
+   Form kartlarından önce gelir ve tek koyu yüzey olarak durur - panelin
+   tamamı beyaz kartlardan ibaret kalmasın. */
+.kunye {
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, var(--lacivert-koyu), var(--mavi));
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(6, 59, 120, 0.24);
+}
+
+.kunye__baslik {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.kunye__alt {
+  margin: 7px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.88;
+  max-width: 420px;
+}
+
+.kunye__etiketler {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.kunye__etiket {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
 /* --------------------------------------------------------------- kartlar */
 
 .card {
-  background: var(--panel);
+  background: rgba(255, 255, 255, 0.97);
   border: 1px solid var(--cizgi);
   border-radius: var(--yuvarlak);
-  padding: 16px 18px;
-  box-shadow: var(--golge);
+  padding: 18px;
+  box-shadow: var(--golge-kart);
 }
 
 .card__baslik {
@@ -242,26 +312,26 @@ textarea {
   align-items: center;
   gap: 10px;
   margin: 0 0 14px;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: var(--lacivert);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--mavi);
   letter-spacing: 0.1px;
 }
 
-/* Numara rozeti: sol paneldeki kartlar bir SIRA — önce belge ayarları, sonra
-   mail bilgileri, sonra satırlar. Numara bu sırayı taşıdığı için var,
-   süs olarak değil. */
+/* Numara rozeti: sol paneldeki kartlar bir SIRA — önce belge, sonra mail
+   bilgileri, sonra satırlar. Numara bu sırayı taşıdığı için var, süs olarak
+   değil. */
 .card__no {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--mavi-soluk);
   color: var(--mavi);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 12.5px;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
@@ -274,9 +344,9 @@ textarea {
 }
 
 .card__aciklama {
-  margin: -6px 0 12px;
-  font-size: 12.5px;
-  line-height: 1.5;
+  margin: -6px 0 14px;
+  font-size: 12px;
+  line-height: 1.45;
   color: var(--soluk);
 }
 
@@ -286,13 +356,14 @@ textarea {
   display: grid;
   gap: 5px;
   min-width: 0;
+  margin-bottom: 11px;
 }
 
+/* Etiketler V6.1'deki gibi: küçük, kalın, DÜZ yazım. Büyük harf bir
+   kurumsal formu gereksiz sertleştiriyor. */
 .alan__etiket {
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-weight: 800;
   color: var(--murekkep-orta);
 }
 
@@ -315,22 +386,28 @@ textarea {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.izgara > *,
+.izgara--2 > *,
+.izgara--3 > * {
+  min-width: 0;
+}
+
 input[type="text"],
 input[type="search"],
 select,
 textarea {
   width: 100%;
   max-width: 100%;
-  border: 1px solid #c9d6e5;
-  border-radius: 9px;
-  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 11px;
   background: #fff;
   line-height: 1.35;
   transition: border-color 0.12s, box-shadow 0.12s;
 }
 
 textarea {
-  min-height: 66px;
+  min-height: 72px;
   resize: vertical;
 }
 
@@ -340,7 +417,7 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--mavi);
-  box-shadow: 0 0 0 3px rgba(11, 74, 162, 0.1);
+  box-shadow: 0 0 0 3px rgba(11, 74, 162, 0.09);
 }
 
 input::placeholder,
@@ -362,73 +439,79 @@ textarea::placeholder {
   justify-content: center;
   gap: 6px;
   border: 1px solid transparent;
-  border-radius: 9px;
-  padding: 9px 14px;
+  border-radius: 10px;
+  padding: 10px 14px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s,
+    box-shadow 0.12s;
 }
 
 .btn--birincil {
-  background: var(--lacivert);
+  background: var(--mavi);
   color: #fff;
-  border-color: var(--lacivert);
+  border-color: var(--mavi);
+  box-shadow: 0 4px 12px rgba(11, 74, 162, 0.22);
 }
 
 .btn--birincil:hover:not(:disabled) {
-  background: var(--lacivert-koyu);
+  background: var(--lacivert);
+  border-color: var(--lacivert);
 }
 
 .btn--ikincil {
   background: #fff;
-  color: var(--lacivert);
-  border-color: #c2d3e6;
+  color: #334155;
+  border-color: var(--cizgi);
 }
 
 .btn--ikincil:hover:not(:disabled) {
   border-color: var(--mavi);
-  background: var(--mavi-soluk);
+  color: var(--mavi);
 }
 
 .btn--yesil {
   background: var(--yesil);
   color: #fff;
   border-color: var(--yesil);
+  box-shadow: 0 4px 12px rgba(63, 143, 46, 0.22);
 }
 
 .btn--yesil:hover:not(:disabled) {
   background: #35771f;
+  border-color: #35771f;
 }
 
 .btn--sessiz {
-  background: transparent;
-  color: var(--murekkep-orta);
+  background: var(--mavi-soluk);
+  color: var(--mavi);
 }
 
 .btn--sessiz:hover:not(:disabled) {
-  background: #eaf0f7;
+  background: #dcebfa;
 }
 
 .btn--tehlike {
-  background: transparent;
+  background: var(--hata-zemin);
   color: var(--hata);
 }
 
 .btn--tehlike:hover:not(:disabled) {
-  background: var(--hata-zemin);
+  background: #fbdcda;
 }
 
 .btn--kucuk {
-  padding: 6px 10px;
+  padding: 7px 10px;
   font-size: 12px;
-  border-radius: 8px;
+  border-radius: 9px;
 }
 
 .btn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+  box-shadow: none;
 }
 
 /* ------------------------------------------------------------ araç şeridi */
@@ -440,8 +523,8 @@ textarea::placeholder {
   z-index: 4;
   margin: -16px -16px 0;
   padding: 12px 16px;
-  background: rgba(247, 250, 253, 0.94);
-  backdrop-filter: blur(8px);
+  background: rgba(248, 250, 252, 0.96);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--cizgi);
 }
 
@@ -454,8 +537,8 @@ textarea::placeholder {
 
 .arac-serit__ad {
   flex: 1;
-  min-width: 120px;
-  font-weight: 700;
+  min-width: 110px;
+  font-weight: 800;
   font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -474,10 +557,10 @@ textarea::placeholder {
   border: 1px solid var(--cizgi);
   background: #fff;
   border-radius: 999px;
-  padding: 7px 13px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--murekkep-orta);
+  padding: 8px 13px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
   cursor: pointer;
   white-space: nowrap;
   transition: background-color 0.12s, border-color 0.12s, color 0.12s;
@@ -490,9 +573,23 @@ textarea::placeholder {
 
 .seg--secili,
 .seg--secili:hover {
-  background: var(--lacivert);
-  border-color: var(--lacivert);
+  background: var(--mavi);
+  border-color: var(--mavi);
   color: #fff;
+  box-shadow: 0 4px 12px rgba(11, 74, 162, 0.22);
+}
+
+.seg:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Yeşil tonlu seçim (geliştirme bölümü, yeşil not). */
+.seg--yesil.seg--secili,
+.seg--yesil.seg--secili:hover {
+  background: var(--yesil);
+  border-color: var(--yesil);
+  box-shadow: 0 4px 12px rgba(63, 143, 46, 0.22);
 }
 
 /* Mail tipi seçimi: radyo düğmesi yerine açıklamalı kutu. Tip sonradan
@@ -508,8 +605,8 @@ textarea::placeholder {
   gap: 4px 10px;
   align-items: start;
   border: 1px solid var(--cizgi);
-  border-radius: 11px;
-  padding: 11px 13px;
+  border-radius: 13px;
+  padding: 12px 13px;
   cursor: pointer;
   background: #fff;
   transition: border-color 0.12s, background-color 0.12s;
@@ -525,17 +622,17 @@ textarea::placeholder {
 }
 
 .tip-kutu--kapali {
-  opacity: 0.62;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
 .tip-kutu input {
   margin: 3px 0 0;
-  accent-color: var(--lacivert);
+  accent-color: var(--mavi);
 }
 
 .tip-kutu__ad {
-  font-weight: 700;
+  font-weight: 800;
   font-size: 13.5px;
 }
 
@@ -553,23 +650,23 @@ textarea::placeholder {
    "mailde ne göreceğim" sorusunun cevabını önceden veriyor. */
 .kpi-serit {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  gap: 8px;
-  margin-bottom: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .kpi {
-  border: 1px solid var(--cizgi-soluk);
-  border-radius: 11px;
-  padding: 10px 8px;
+  border: 1px solid var(--cizgi);
+  border-radius: 14px;
+  padding: 13px 10px;
   text-align: center;
-  background: var(--panel-soluk);
+  background: linear-gradient(180deg, #fff, #f7fafd);
 }
 
 .kpi__sayi {
   display: block;
-  font-size: 19px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
   color: var(--mavi);
@@ -581,20 +678,20 @@ textarea::placeholder {
 
 .kpi__etiket {
   display: block;
-  margin-top: 3px;
+  margin-top: 4px;
   font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 800;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--soluk);
+  color: #66768a;
 }
 
 /* ------------------------------------------------------------ sütun seçimi */
 
 .secim-izgara {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 7px;
+  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  gap: 9px;
 }
 
 .secim {
@@ -602,11 +699,11 @@ textarea::placeholder {
   align-items: center;
   gap: 8px;
   border: 1px solid var(--cizgi);
-  border-radius: 9px;
-  padding: 8px 10px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--murekkep-orta);
+  border-radius: var(--yuvarlak-kucuk);
+  padding: 9px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
   background: #fff;
   cursor: pointer;
   min-width: 0;
@@ -618,7 +715,7 @@ textarea::placeholder {
 
 .secim--acik {
   background: var(--mavi-soluk);
-  border-color: #b6cde8;
+  border-color: var(--mavi-cizgi);
   color: var(--mavi);
 }
 
@@ -638,9 +735,15 @@ textarea::placeholder {
 
 .bolum {
   border: 1px solid var(--cizgi);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 14px;
-  background: var(--panel-soluk);
+  background: #fbfdff;
+}
+
+/* Tona göre zemin: mailde mavi/yeşil olarak çizilecek bölüm, editörde de
+   aynı ipucunu versin. */
+.bolum--green {
+  background: #fbfdf7;
 }
 
 .bolum + .bolum {
@@ -651,7 +754,7 @@ textarea::placeholder {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 /* Ton noktası: içerik "blue"/"green" yazar, gerçek renk temadan gelir.
@@ -672,26 +775,28 @@ textarea::placeholder {
 /* ------------------------------------------------------------ satır kartı */
 
 .satir-karti {
-  border: 1px solid var(--cizgi-soluk);
-  border-radius: 11px;
-  padding: 12px 13px;
+  border: 1px solid var(--cizgi);
+  border-radius: 14px;
+  padding: 14px;
   background: #fff;
-  margin-bottom: 9px;
+  margin-bottom: 12px;
+}
+
+.satir-karti--green {
+  background: #fcfdfa;
 }
 
 .satir-karti__ust {
   display: flex;
   align-items: center;
   gap: 9px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .satir-karti__no {
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--soluk);
+  font-size: 12px;
+  font-weight: 800;
+  color: #334155;
   font-variant-numeric: tabular-nums;
 }
 
@@ -699,7 +804,7 @@ textarea::placeholder {
   flex: 1;
   min-width: 0;
   font-size: 12.5px;
-  color: var(--murekkep-orta);
+  color: var(--soluk);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -708,8 +813,8 @@ textarea::placeholder {
 /* --------------------------------------------------------------- uyarılar */
 
 .uyari {
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: var(--yuvarlak-kucuk);
+  padding: 11px 13px;
   font-size: 12.5px;
   line-height: 1.5;
   border: 1px solid transparent;
@@ -717,19 +822,19 @@ textarea::placeholder {
 
 .uyari--hata {
   background: var(--hata-zemin);
-  border-color: #f2c9c5;
+  border-color: var(--hata-cizgi);
   color: var(--hata);
 }
 
 .uyari--dikkat {
   background: var(--dikkat-zemin);
-  border-color: #f0dcb4;
+  border-color: var(--dikkat-cizgi);
   color: var(--dikkat);
 }
 
 .uyari--bilgi {
   background: var(--mavi-soluk);
-  border-color: #cfe0f2;
+  border-color: var(--mavi-cizgi);
   color: var(--mavi);
 }
 
@@ -748,19 +853,19 @@ textarea::placeholder {
 
 .liste-tablo th {
   text-align: left;
-  padding: 10px 14px;
+  padding: 11px 14px;
   background: var(--panel-soluk);
   border-bottom: 1px solid var(--cizgi);
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--soluk);
   white-space: nowrap;
 }
 
 .liste-tablo td {
-  padding: 11px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--cizgi-soluk);
   vertical-align: middle;
 }
@@ -784,7 +889,7 @@ textarea::placeholder {
 /* Tip etiketi: listede tipi renkle de ayırt et, sadece metinle değil. */
 .etiket {
   display: inline-block;
-  padding: 3px 9px;
+  padding: 4px 10px;
   border-radius: 999px;
   font-size: 11.5px;
   font-weight: 700;
@@ -810,38 +915,38 @@ textarea::placeholder {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  max-width: 820px;
-  margin: 0 auto 10px;
-  padding: 9px 14px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid var(--cizgi);
+  max-width: 900px;
+  margin: 0 auto 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(220, 229, 239, 0.95);
   font-size: 12px;
-  font-weight: 600;
-  color: var(--murekkep-orta);
+  font-weight: 700;
+  color: #334155;
 }
 
 .onizleme-ust__durum {
   font-weight: 500;
-  color: var(--soluk);
+  color: #7a8798;
 }
 
 /* Mail kâğıdı: gerçek mail 760px sabit genişlikte. Çerçeveyi ona göre
    kurup gölge veriyoruz — kullanıcı Outlook'ta göreceği genişliği görsün. */
 .mail-cerceve {
-  max-width: 820px;
+  max-width: 900px;
   margin: 0 auto;
-  border-radius: 12px;
+  border-radius: var(--yuvarlak);
   overflow: hidden;
   background: #fff;
-  border: 1px solid var(--cizgi);
-  box-shadow: 0 16px 40px rgba(15, 42, 78, 0.14);
+  box-shadow: var(--golge-kalkik);
 }
 
+/* Yükseklik JS'ten geliyor: çerçeve mailin boyu kadar uzuyor, böylece
+   iç içe iki kaydırma çubuğu olmuyor (bkz. PreviewPane.yuksekligiOlc). */
 .mail-cerceve iframe {
   display: block;
   width: 100%;
-  height: calc(100vh - 170px);
   min-height: 520px;
   border: 0;
   background: #fff;
@@ -863,8 +968,8 @@ textarea::placeholder {
 .modal {
   background: #fff;
   border-radius: var(--yuvarlak);
-  padding: 20px 22px;
-  width: 560px;
+  padding: 22px;
+  width: 580px;
   max-width: 100%;
   max-height: 85vh;
   overflow: auto;
@@ -874,8 +979,8 @@ textarea::placeholder {
 .modal__baslik {
   margin: 0 0 14px;
   font-size: 16px;
-  font-weight: 700;
-  color: var(--lacivert);
+  font-weight: 800;
+  color: var(--mavi);
 }
 
 /* ------------------------------------------------------------- boş durum */
@@ -888,12 +993,12 @@ textarea::placeholder {
 .bos-durum__baslik {
   margin: 0 0 6px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .bos-durum__metin {
   margin: 0 auto 16px;
-  max-width: 380px;
+  max-width: 390px;
   font-size: 13px;
   line-height: 1.55;
   color: var(--soluk);
@@ -950,7 +1055,7 @@ textarea::placeholder {
   .arac-serit {
     position: static;
     margin: 0;
-    border-radius: 10px;
+    border-radius: 14px;
     border: 1px solid var(--cizgi);
     background: #fff;
   }
@@ -968,6 +1073,10 @@ textarea::placeholder {
 
   .ust-serit {
     flex-wrap: wrap;
+  }
+
+  .ust-serit__alt {
+    display: none;
   }
 }
 

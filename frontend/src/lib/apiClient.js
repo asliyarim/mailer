@@ -174,6 +174,28 @@ export async function fetchDocuments(teamId) {
   return response.json();
 }
 
+/**
+ * Bir tipin/takimin VARSAYILAN icerigi - belge OLUSTURMADAN (docs/api.md §3b).
+ *
+ * Neden var: uygulama acilinca sagda mail sablonunun tamami gorunsun
+ * isteniyor, ama o an ortada belge yok. Iki alternatif elendi:
+ *   - her acilista taslak yaratmak  -> DB'de cop taslak birikir
+ *   - iskeleti istemcide kurmak     -> ikinci bir "bos icerik" tanimi
+ *     olusur ve VarsayilanIcerik'ten ayrisir (Mimari Kural 4)
+ *
+ * Uc yan etkisiz: hicbir sey yazmaz. Dondugu sey POST /documents'in
+ * uretecegi content'in AYNISI - sunucuda ikisi ayni metodu cagiriyor.
+ */
+export async function fetchDefaultContent(teamId, templateType) {
+  const response = await authFetch(
+    `/api/mailer/documents/default?teamId=${encodeURIComponent(teamId)}` +
+      `&templateType=${encodeURIComponent(templateType)}`,
+    getInit
+  );
+  await ensureOk(response, "Varsayılan içerik alınamadı.");
+  return response.json();
+}
+
 export async function fetchDocument(id) {
   const response = await authFetch(`/api/mailer/documents/${id}`, getInit);
   await ensureOk(response, "Belge alınamadı.");

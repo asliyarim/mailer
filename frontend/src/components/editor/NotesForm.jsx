@@ -32,23 +32,31 @@ export default function NotesForm({ notes, footer, onNotesChange, onFooterChange
       )}
 
       {notes.map((not, index) => (
-        <div className="satir-karti" key={index}>
+        <div
+          className={not.tone === 'green' ? 'satir-karti satir-karti--green' : 'satir-karti'}
+          key={index}
+        >
           <div className="satir-karti__ust">
             <span className={`nokta nokta--${not.tone}`} aria-hidden="true" />
             <span className="satir-karti__no">{index + 1}. not</span>
 
             <span className="sag-yasla">
               <div className="seg-grup">
-                {TON_SECENEKLERI.map((secenek) => (
-                  <button
-                    key={secenek.deger}
-                    type="button"
-                    className={not.tone === secenek.deger ? 'seg seg--secili' : 'seg'}
-                    onClick={() => notGuncelle(index, { ...not, tone: secenek.deger })}
-                  >
-                    {secenek.etiket}
-                  </button>
-                ))}
+                {TON_SECENEKLERI.map((secenek) => {
+                  const siniflar = ['seg']
+                  if (secenek.deger === 'green') siniflar.push('seg--yesil')
+                  if (not.tone === secenek.deger) siniflar.push('seg--secili')
+                  return (
+                    <button
+                      key={secenek.deger}
+                      type="button"
+                      className={siniflar.join(' ')}
+                      onClick={() => notGuncelle(index, { ...not, tone: secenek.deger })}
+                    >
+                      {secenek.etiket}
+                    </button>
+                  )
+                })}
               </div>
             </span>
 

@@ -66,9 +66,9 @@ export default function DocumentListPage() {
             </p>
           </div>
           <span className="sag-yasla">
-            <Link to="/editor/new">
-              <Button varyant="birincil">+ Yeni mail</Button>
-            </Link>
+            <Button varyant="birincil" onClick={() => navigate('/')}>
+              + Yeni mail
+            </Button>
           </span>
         </div>
 
@@ -104,9 +104,9 @@ export default function DocumentListPage() {
                 "Yeni mail" ile başlayın — tipi seçtiğinizde bölümler ve sütunlar
                 hazır gelir, siz sadece satırları doldurursunuz.
               </p>
-              <Link to="/editor/new">
-                <Button varyant="birincil">+ Yeni mail</Button>
-              </Link>
+              <Button varyant="birincil" onClick={() => navigate('/')}>
+                + Yeni mail
+              </Button>
             </div>
           </div>
         )}

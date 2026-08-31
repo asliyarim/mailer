@@ -16,6 +16,7 @@ const PARAGRAF_IPUCLARI = [
 ]
 
 export default function MetaForm({
+  takimAdlari = [],
   header,
   meeting,
   intro,
@@ -58,12 +59,25 @@ export default function MetaForm({
 
           <label className="alan">
             <span className="alan__etiket">Takım etiketi</span>
-            <input
-              type="text"
-              placeholder="RPA Takımı"
+            {/* Elle yazılmıyor, listeden seçiliyor: bu metin mailin hero
+                şeridinde çıkıyor ve "RPA Takimi" gibi bir yazım hatası
+                düzeltilmeden dışarı gider. Takım adları sunucudan geliyor. */}
+            <select
               value={header.teamLabel}
               onChange={(e) => onHeaderChange({ teamLabel: e.target.value })}
-            />
+            >
+              <option value="">—</option>
+              {/* Kayıtlı değer listede yoksa kaybolmasın (eski belge, takım
+                  adı değişmiş olabilir): başa eklenir. */}
+              {header.teamLabel && !takimAdlari.includes(header.teamLabel) && (
+                <option value={header.teamLabel}>{header.teamLabel}</option>
+              )}
+              {takimAdlari.map((ad) => (
+                <option key={ad} value={ad}>
+                  {ad}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
 

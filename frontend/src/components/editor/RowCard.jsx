@@ -13,11 +13,18 @@
 // kaydedilmez, mailde bir karşılığı yoktur. İçeriğe ait her şey yukarıda.
 
 import { useState } from 'react'
-import { KONU_TURLERI, ROW_FIELD_LABELS } from '../../lib/mailContent.js'
+import { KONU_TURLERI, ROW_FIELD_LABELS, SEKTORLER } from '../../lib/mailContent.js'
 import Button from '../shared/Button.jsx'
 
 // Uzun metin alan alanlar tek satırlık input yerine textarea alır.
 const COK_SATIRLI = ['note', 'expected', 'summary', 'stake']
+
+// Sabit listeden seçilen alanlar. Serbest metin olsalardı aynı şeyin iki
+// yazımı iki ayrı değer olurdu (sektör gruplaması buna bakıyor).
+const LISTELI = {
+  sector: SEKTORLER,
+  topicType: KONU_TURLERI,
+}
 
 // Kapalı kartta hangi alan özet olarak gösterilsin - ilk dolu olan kazanır.
 const OZET_SIRASI = ['jira', 'process', 'summary', 'sector', 'topicType']
@@ -26,10 +33,10 @@ function ozetMetni(row, columns) {
   const alan = OZET_SIRASI.find((a) => columns.includes(a) && row[a]?.trim())
   if (!alan) return 'Boş satır'
   const metin = row[alan].trim().replace(/\s+/g, ' ')
-  return metin.length > 70 ? `${metin.slice(0, 70)}…` : metin
+  return metin.length > 60 ? `${metin.slice(0, 60)}…` : metin
 }
 
-export default function RowCard({ row, columns, sira, onChange, onSil }) {
+export default function RowCard({ row, columns, sira, tone = 'blue', onChange, onSil }) {
   const [acik, setAcik] = useState(true)
 
   function alanDegisti(alan, deger) {
@@ -37,8 +44,9 @@ export default function RowCard({ row, columns, sira, onChange, onSil }) {
   }
 
   return (
-    <div className="satir-karti">
+    <div className={tone === 'green' ? 'satir-karti satir-karti--green' : 'satir-karti'}>
       <div className="satir-karti__ust">
+        <span className={`nokta nokta--${tone}`} aria-hidden="true" />
         <span className="satir-karti__no">{sira}. satır</span>
 
         {!acik && <span className="satir-karti__ozet">{ozetMetni(row, columns)}</span>}
@@ -57,6 +65,8 @@ export default function RowCard({ row, columns, sira, onChange, onSil }) {
         <div className="izgara izgara--2">
           {columns.map((alan) => {
             const cokSatirli = COK_SATIRLI.includes(alan)
+            const secenekler = LISTELI[alan]
+
             return (
               <label
                 className="alan"
@@ -65,12 +75,16 @@ export default function RowCard({ row, columns, sira, onChange, onSil }) {
               >
                 <span className="alan__etiket">{ROW_FIELD_LABELS[alan] ?? alan}</span>
 
-                {alan === 'topicType' ? (
+                {secenekler ? (
                   <select value={row[alan] ?? ''} onChange={(e) => alanDegisti(alan, e.target.value)}>
                     <option value="">—</option>
-                    {KONU_TURLERI.map((tur) => (
-                      <option key={tur} value={tur}>
-                        {tur}
+                    {/* Kayıtlı değer listede yoksa kaybolmasın: başa eklenir. */}
+                    {row[alan] && !secenekler.includes(row[alan]) && (
+                      <option value={row[alan]}>{row[alan]}</option>
+                    )}
+                    {secenekler.map((secenek) => (
+                      <option key={secenek} value={secenek}>
+                        {secenek}
                       </option>
                     ))}
                   </select>

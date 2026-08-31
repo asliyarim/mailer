@@ -12,12 +12,13 @@ import { fetchEml, logDownload } from '../../lib/apiClient.js'
 import Button from '../shared/Button.jsx'
 
 export default function TopActions({
+  taslak,
   belge,
   kaydediliyor,
   kaydedilmemis,
+  hazir,
   onizlemeHtml,
   onKaydet,
-  onListe,
 }) {
   const [indiriliyor, setIndiriliyor] = useState(false)
   const [hata, setHata] = useState(null)
@@ -101,16 +102,15 @@ export default function TopActions({
   return (
     <div className="arac-serit">
       <div className="arac-serit__satir">
-        <Button varyant="sessiz" boyut="kucuk" onClick={onListe}>
-          ← Belgelerim
-        </Button>
-
+        {/* "Belgelerim" ust seritte - burada yeri yok, bu serit belgenin
+            kendisiyle ilgili eylemleri tasiyor. */}
         <span className="arac-serit__ad" title={belge?.title}>
           {belge?.title ?? 'Yeni mail'}
         </span>
 
-        <Button varyant="birincil" onClick={onKaydet} disabled={kaydediliyor || !belge}>
-          {kaydediliyor ? 'Kaydediliyor…' : 'Kaydet'}
+        {/* Taslakta da Kaydet acik: belge zaten o an dogacak. */}
+        <Button varyant="birincil" onClick={onKaydet} disabled={kaydediliyor || !hazir}>
+          {kaydediliyor ? 'Kaydediliyor…' : taslak ? 'Kaydet ve oluştur' : 'Kaydet'}
         </Button>
 
         {/* Indirilen .eml SUNUCUDAKI kayitli surumden uretilir - ekrandaki
@@ -119,9 +119,11 @@ export default function TopActions({
           onClick={emlIndir}
           disabled={!belge || indiriliyor || kaydedilmemis}
           baslik={
-            kaydedilmemis
-              ? 'Önce kaydedin: mail dosyası sunucudaki kayıtlı sürümden üretilir.'
-              : undefined
+            taslak
+              ? 'Mail dosyası kayıtlı sürümden üretilir - önce kaydedin.'
+              : kaydedilmemis
+                ? 'Önce kaydedin: mail dosyası sunucudaki kayıtlı sürümden üretilir.'
+                : undefined
           }
         >
           {indiriliyor ? 'Hazırlanıyor…' : 'Outlook Maili İndir'}
@@ -132,11 +134,18 @@ export default function TopActions({
         </Button>
       </div>
 
-      {kaydedilmemis && (
+      {taslak ? (
         <p className="alan__ipucu" style={{ marginTop: 8 }}>
-          Kaydedilmemiş değişiklikleriniz var. Önizleme ve yazdırma bunları gösterir;
-          Outlook maili ise kayıtlı sürümden üretilir.
+          Bu mail henüz kaydedilmedi. Kaydettiğinizde mail listenize eklenir ve
+          Outlook dosyası indirilebilir hâle gelir.
         </p>
+      ) : (
+        kaydedilmemis && (
+          <p className="alan__ipucu" style={{ marginTop: 8 }}>
+            Kaydedilmemiş değişiklikleriniz var. Önizleme ve yazdırma bunları gösterir;
+            Outlook maili ise kayıtlı sürümden üretilir.
+          </p>
+        )
       )}
 
       {hata && (

@@ -4,9 +4,13 @@ import { fetchCurrentUser } from './lib/apiClient.js'
 import TopBar from './components/shared/TopBar.jsx'
 import DocumentListPage from './components/shared/DocumentListPage.jsx'
 import EditorPage from './components/editor/EditorPage.jsx'
-import YeniBelgeForm from './components/editor/YeniBelgeForm.jsx'
 
-// Rotalar: / · /belgeler · /editor/new · /editor/:id
+// Rotalar: / · /belgeler · /editor/:id
+//
+// "/" DOGRUDAN EDITORU acar - karsilama ekrani yok. Kabuktan uygulamaya
+// girildiginde kullanici formun basinda olsun diye (Aslı'nin karari).
+// Hangi belgenin acilacagini EditorPage cozer: en son guncellenen belge,
+// hic belge yoksa sol bardaki olusturma karti.
 //
 // basename normalde Vite'in base'i (/mailer/) - kabuk icinde o onekten
 // servis ediliyoruz. Ama uygulamaya DOGRUDAN kokten girildiginde (yerelde
@@ -68,10 +72,11 @@ export default function App() {
     <BrowserRouter basename={BASENAME}>
       <TopBar user={user} durum={kayitDurumu?.metin} durumUyari={kayitDurumu?.uyari} />
       <Routes>
-        <Route path="/" element={<Navigate to="/belgeler" replace />} />
+        <Route path="/" element={<EditorPage user={user} onDurum={durumBildir} />} />
         <Route path="/belgeler" element={<DocumentListPage user={user} />} />
-        <Route path="/editor/new" element={<YeniBelgeForm />} />
         <Route path="/editor/:id" element={<EditorPage user={user} onDurum={durumBildir} />} />
+        {/* Eski yer imleri ve /editor/new bagi kirilmasin. */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )
