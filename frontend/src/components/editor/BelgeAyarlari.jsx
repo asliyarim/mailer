@@ -20,12 +20,13 @@ import { TEMPLATE_LABELS, TEMPLATE_TYPES } from '../../lib/mailContent.js'
 const TIP_ACIKLAMALARI = {
   KAPANIS: 'Biten sprintin analiz ve geliştirme çalışmaları, sektöre göre gruplu tablolar.',
   PLANLAMA: 'Gelecek sprintin konuları: konu anahtarı, özet, durum, beklenen işler.',
-  YONETICI_OZETI: 'Sayaçlar, sektör özeti ve dikkat gerektiren konular.',
+  YONETICI_OZETI:
+    'Görüşülen konular, alınan kararlar, bekleyen aksiyonlar ve erişim bağlantıları.',
 }
 
 // Sunucuda henüz şablonu olmayan tipler. Şablon geldiğinde bu liste boşalır;
 // seçilebilir hâle getirmek için başka bir yere dokunmak gerekmez.
-const HAZIR_OLMAYAN_TIPLER = [TEMPLATE_TYPES.YONETICI_OZETI]
+const HAZIR_OLMAYAN_TIPLER = []
 
 export default function BelgeAyarlari({
   taslak,

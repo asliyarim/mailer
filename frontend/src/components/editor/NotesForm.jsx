@@ -6,6 +6,7 @@ import Button from '../shared/Button.jsx'
 const TON_SECENEKLERI = [
   { deger: 'blue', etiket: 'Mavi' },
   { deger: 'green', etiket: 'Yeşil' },
+  { deger: 'orange', etiket: 'Turuncu' },
 ]
 
 export default function NotesForm({ notes, footer, onNotesChange, onFooterChange }) {
@@ -33,7 +34,7 @@ export default function NotesForm({ notes, footer, onNotesChange, onFooterChange
 
       {notes.map((not, index) => (
         <div
-          className={not.tone === 'green' ? 'satir-karti satir-karti--green' : 'satir-karti'}
+          className={'satir-karti satir-karti--' + not.tone}
           key={index}
         >
           <div className="satir-karti__ust">
@@ -44,7 +45,7 @@ export default function NotesForm({ notes, footer, onNotesChange, onFooterChange
               <div className="seg-grup">
                 {TON_SECENEKLERI.map((secenek) => {
                   const siniflar = ['seg']
-                  if (secenek.deger === 'green') siniflar.push('seg--yesil')
+                  if (secenek.deger !== 'blue') siniflar.push(`seg--${secenek.deger}`)
                   if (not.tone === secenek.deger) siniflar.push('seg--secili')
                   return (
                     <button

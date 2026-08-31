@@ -6,12 +6,25 @@
 import RowCard from './RowCard.jsx'
 import SutunSecimi from './SutunSecimi.jsx'
 import Button from '../shared/Button.jsx'
-import { countRows, emptyRow, emptySection, VARSAYILAN_SUTUNLAR } from '../../lib/mailContent.js'
+import {
+  countRows,
+  emptyRow,
+  emptySection,
+  EN_FAZLA_BAGLANTI,
+  TEMPLATE_TYPES,
+  VARSAYILAN_SUTUNLAR,
+} from '../../lib/mailContent.js'
 
+// Ton bir ROL: gerçek renk temadan gelir. Turuncu her temada aynı anlamda
+// (bekleyen / dikkat), o yüzden takıma göre değişmiyor.
 const TON_SECENEKLERI = [
   { deger: 'blue', etiket: 'Mavi' },
   { deger: 'green', etiket: 'Yeşil' },
+  { deger: 'orange', etiket: 'Turuncu' },
 ]
+
+/** Bağlantı kartları bölümü - tablo değil, yan yana kartlar olarak çiziliyor. */
+const BAGLANTI_BOLUMU = 'links'
 
 export default function SectionList({ sections, templateType, onChange }) {
   function bolumGuncelle(index, yeniBolum) {
@@ -67,8 +80,13 @@ export default function SectionList({ sections, templateType, onChange }) {
 
       {/* Sayaçlar SAKLANMAZ, satır sayısından hesaplanır (docs/BRIEF.md §6).
           Mailde de aynı rakamlar çıkar; burada göstermek kullanıcıya maili
-          açmadan "kaç kalem gidiyor" sorusunun cevabını veriyor. */}
-      {sections.length > 0 && (
+          açmadan "kaç kalem gidiyor" sorusunun cevabını veriyor.
+
+          YÖNETİCİ ÖZETİ'NDE GÖSTERİLMİYOR: o mailin sayaçları satır sayısı
+          değil ("yer alan ekip" = tekrarsız ekip sayısı, "bekleyen konu" =
+          durumu Tamamlandı OLMAYAN aksiyonlar). Buraya ham satır sayısını
+          koysaydık ekrandaki rakam ile maildeki rakam ayrışırdı. */}
+      {sections.length > 0 && templateType !== TEMPLATE_TYPES.YONETICI_OZETI && (
         <div className="kpi-serit">
           <div className="kpi">
             <span className="kpi__sayi">{toplamSatir}</span>
@@ -102,11 +120,9 @@ export default function SectionList({ sections, templateType, onChange }) {
       {sections.map((bolum, bolumIndex) => {
         const sutunlar =
           bolum.columns ?? VARSAYILAN_SUTUNLAR[templateType] ?? VARSAYILAN_SUTUNLAR.KAPANIS
+        const baglantiBolumu = bolum.key === BAGLANTI_BOLUMU
         return (
-          <div
-            className={bolum.tone === 'green' ? 'bolum bolum--green' : 'bolum'}
-            key={bolum.key}
-          >
+          <div className={`bolum bolum--${bolum.tone}`} key={bolum.key}>
             <div className="bolum__ust">
               <span className={`nokta nokta--${bolum.tone}`} aria-hidden="true" />
               <input
@@ -132,7 +148,7 @@ export default function SectionList({ sections, templateType, onChange }) {
                 {TON_SECENEKLERI.map((secenek) => {
                   const secili = bolum.tone === secenek.deger
                   const siniflar = ['seg']
-                  if (secenek.deger === 'green') siniflar.push('seg--yesil')
+                  if (secenek.deger !== 'blue') siniflar.push(`seg--${secenek.deger}`)
                   if (secili) siniflar.push('seg--secili')
                   return (
                     <button
@@ -148,13 +164,20 @@ export default function SectionList({ sections, templateType, onChange }) {
               </div>
             </div>
 
-            <SutunSecimi
-              templateType={templateType}
-              columns={sutunlar}
-              onChange={(yeniSutunlar) =>
-                bolumGuncelle(bolumIndex, { ...bolum, columns: yeniSutunlar })
-              }
-            />
+            {/* Yönetici Özeti'nde sütun seçimi YOK: bölümlerin yapısı tipe
+                değil bölüme bağlı (kararlar, aksiyonlar ve bağlantı kartları
+                birbirinden tamamen farklı çiziliyor). Serbest sütun seçimi
+                "url" alanını görüşülen konular tablosuna eklemek gibi
+                anlamsız sonuçlar üretirdi. */}
+            {templateType !== TEMPLATE_TYPES.YONETICI_OZETI && (
+              <SutunSecimi
+                templateType={templateType}
+                columns={sutunlar}
+                onChange={(yeniSutunlar) =>
+                  bolumGuncelle(bolumIndex, { ...bolum, columns: yeniSutunlar })
+                }
+              />
+            )}
 
             {bolum.rows.map((satir, satirIndex) => (
               <RowCard
@@ -163,17 +186,28 @@ export default function SectionList({ sections, templateType, onChange }) {
                 columns={sutunlar}
                 sira={satirIndex + 1}
                 tone={bolum.tone}
+                templateType={templateType}
                 onChange={(yeni) => satirGuncelle(bolumIndex, satirIndex, yeni)}
                 onSil={() => satirSil(bolumIndex, satirIndex)}
               />
             ))}
 
+            {/* Bağlantı kartları mailde tek satırda yan yana çiziliyor;
+                Outlook alta kaydırmadığı için dörtten fazlası okunmaz olur. */}
+            {baglantiBolumu && bolum.rows.length >= EN_FAZLA_BAGLANTI && (
+              <p className="alan__ipucu" style={{ marginBottom: 10 }}>
+                Bağlantı kartları mailde yan yana çiziliyor; {EN_FAZLA_BAGLANTI} karttan
+                fazlası dar kalıp okunmaz hale gelir.
+              </p>
+            )}
+
             <Button
               varyant={bolum.tone === 'green' ? 'yesil' : 'ikincil'}
               boyut="kucuk"
+              disabled={baglantiBolumu && bolum.rows.length >= EN_FAZLA_BAGLANTI}
               onClick={() => satirEkle(bolumIndex)}
             >
-              + Satır ekle
+              {baglantiBolumu ? '+ Bağlantı ekle' : '+ Satır ekle'}
             </Button>
           </div>
         )

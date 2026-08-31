@@ -33,6 +33,7 @@ import {
   saveDocument,
 } from '../../lib/apiClient.js'
 import { emptyContent, TEMPLATE_TYPES, validateContent } from '../../lib/mailContent.js'
+import { alanaYaz } from '../../lib/icerikYolu.js'
 import BelgeAyarlari from './BelgeAyarlari.jsx'
 import MetaForm from './MetaForm.jsx'
 import SectionList from './SectionList.jsx'
@@ -201,6 +202,18 @@ export default function EditorPage({ onDurum }) {
   }
 
   const onizlemeGeldi = useCallback((html) => setOnizlemeHtml(html), [])
+
+  /**
+   * Önizlemede tıklanan alana yazılan değer.
+   *
+   * Soldaki formla AYNI state'e gidiyor - iki giriş yolu var ama tek kaynak
+   * var. Mail HTML'i yine yalnızca sunucuda üretiliyor; burada değişen şey
+   * içerik, çizim değil.
+   */
+  const alanDegisti = useCallback((adres, deger) => {
+    setContent((onceki) => alanaYaz(onceki, adres, deger))
+    setKaydedilmemis(true)
+  }, [])
 
   // --- taslak: takim / tip degisimi ----------------------------------------
 
@@ -413,6 +426,7 @@ export default function EditorPage({ onDurum }) {
           content={content}
           hazirlaniyor={!formGoster}
           onHtml={onizlemeGeldi}
+          onAlanDegisti={alanDegisti}
         />
       </section>
 

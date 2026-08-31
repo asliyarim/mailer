@@ -19,8 +19,16 @@ export const TEMPLATE_LABELS = {
   YONETICI_OZETI: "Yönetici Özeti",
 };
 
-/** Bolum ve not kutularinin renk tonu. Gercek renk degeri TEMADAN gelir. */
-export const TONES = ["blue", "green"];
+/**
+ * Bolum ve not kutularinin renk tonu. Gercek renk degeri TEMADAN gelir -
+ * icerik JSON'u bir ROL yazar, renk kodu degil (Mimari Kural 4).
+ *
+ * "orange" Yonetici Ozeti ile geldi: bekleyen/dikkat gerektiren konular.
+ * Bu liste BACKEND'DEN ONCE genisletildi - tersi olsaydi turuncu bolumle
+ * dogan yeni belgeyi validateContent "gecersiz ton" diye reddeder ve
+ * kullanici belgesini kaydedemezdi.
+ */
+export const TONES = ["blue", "green", "orange"];
 
 /**
  * Tüm satır alanları, tek sözlük. Hangi alanın hangi mail tipinde
@@ -35,6 +43,9 @@ export const ROW_FIELDS = [
   "sector", "jira", "ci", "process", "stage", "stake", "note", "gain",
   // Sprint Planlama
   "topicType", "summary", "status", "sprint", "expected", "department",
+  // Yönetici Özeti
+  "team", "topic", "detail", "no", "decision", "pending", "owner", "due",
+  "linkType", "title", "description", "button", "url",
 ];
 
 export const ROW_FIELD_LABELS = {
@@ -52,7 +63,39 @@ export const ROW_FIELD_LABELS = {
   sprint: "Sprint",
   expected: "Beklenen Konular",
   department: "Departman",
+  team: "Ekip",
+  topic: "Konu",
+  detail: "Detay",
+  no: "Karar No",
+  decision: "Karar",
+  pending: "Bekleyen Konu",
+  owner: "Sorumlu",
+  due: "Termin",
+  linkType: "Bağlantı Türü",
+  title: "Başlık",
+  description: "Açıklama",
+  button: "Buton Metni",
+  url: "Adres (URL)",
 };
+
+/**
+ * Editörde GÖSTERİLMEYEN alanlar.
+ *
+ * `no` (karar numarası) içerikte boş kalır, mail çizilirken K-01, K-02 diye
+ * üretilir. Böylece ortadaki karar silinince kalanlar kendiliğinden yeniden
+ * numaralanır. Kullanıcıya gösterilseydi elle yazdığı numara ile mailde
+ * çıkan numara ayrışırdı.
+ */
+export const GIZLI_ALANLAR = ["no"];
+
+/** Yönetici Özeti'ndeki "Durum" seçenekleri. */
+export const DURUMLAR = ["Bekliyor", "Devam Ediyor", "Karar Bekliyor", "Tamamlandı"];
+
+/**
+ * Bağlantı kartları mailde TEK SATIRDA yan yana çiziliyor; Outlook alta
+ * kaydırmıyor. Dörtten fazlası dar kartta okunmaz hale gelir.
+ */
+export const EN_FAZLA_BAGLANTI = 4;
 
 /** Konu Türü seçenekleri (v6.1'den). */
 export const KONU_TURLERI = ["Hikaye", "Görev", "Bug", "İyileştirme", "Diğer"];
@@ -86,7 +129,11 @@ export const SEKTORLER = [
 export const VARSAYILAN_SUTUNLAR = {
   KAPANIS: ["sector", "jira", "ci", "process", "stage", "stake", "note"],
   PLANLAMA: ["topicType", "jira", "summary", "status", "expected", "stake"],
-  YONETICI_OZETI: ["sector", "process", "note"],
+  // Yönetici Özeti'nde bölümlerin sütunları TİPE DEĞİL BÖLÜME bağlı
+  // (görüşülen / kararlar / aksiyonlar / bağlantılar birbirinden farklı).
+  // Buradaki liste yalnızca kullanıcı elle yeni bölüm eklerse kullanılır;
+  // sunucudan gelen bölümler kendi sütunlarıyla doğuyor.
+  YONETICI_OZETI: ["team", "topic", "detail"],
 };
 
 export function emptyRow() {

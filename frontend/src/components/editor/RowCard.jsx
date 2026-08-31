@@ -13,11 +13,21 @@
 // kaydedilmez, mailde bir karşılığı yoktur. İçeriğe ait her şey yukarıda.
 
 import { useState } from 'react'
-import { KONU_TURLERI, ROW_FIELD_LABELS, SEKTORLER } from '../../lib/mailContent.js'
+import {
+  DURUMLAR,
+  GIZLI_ALANLAR,
+  KONU_TURLERI,
+  ROW_FIELD_LABELS,
+  SEKTORLER,
+  TEMPLATE_TYPES,
+} from '../../lib/mailContent.js'
 import Button from '../shared/Button.jsx'
 
 // Uzun metin alan alanlar tek satırlık input yerine textarea alır.
-const COK_SATIRLI = ['note', 'expected', 'summary', 'stake']
+const COK_SATIRLI = [
+  'note', 'expected', 'summary', 'stake',
+  'detail', 'decision', 'pending', 'description',
+]
 
 // Sabit listeden seçilen alanlar. Serbest metin olsalardı aynı şeyin iki
 // yazımı iki ayrı değer olurdu (sektör gruplaması buna bakıyor).
@@ -26,8 +36,25 @@ const LISTELI = {
   topicType: KONU_TURLERI,
 }
 
+/**
+ * Alanın seçenek listesi - tipe bağlı olanlar burada ayrışıyor.
+ *
+ * `status` iki tipte de var ama aynı şey değil: Yönetici Özeti'nde sabit
+ * dört durumdan biri (sayaç "Tamamlandı" olmayanları sayıyor, yazım hatası
+ * sayacı bozar), Sprint Planlama'da serbest metin.
+ */
+function secenekler(alan, templateType) {
+  if (alan === 'status') {
+    return templateType === TEMPLATE_TYPES.YONETICI_OZETI ? DURUMLAR : null
+  }
+  return LISTELI[alan] ?? null
+}
+
 // Kapalı kartta hangi alan özet olarak gösterilsin - ilk dolu olan kazanır.
-const OZET_SIRASI = ['jira', 'process', 'summary', 'sector', 'topicType']
+const OZET_SIRASI = [
+  'jira', 'process', 'summary', 'sector', 'topicType',
+  'topic', 'decision', 'pending', 'title',
+]
 
 function ozetMetni(row, columns) {
   const alan = OZET_SIRASI.find((a) => columns.includes(a) && row[a]?.trim())
@@ -36,15 +63,32 @@ function ozetMetni(row, columns) {
   return metin.length > 60 ? `${metin.slice(0, 60)}…` : metin
 }
 
-export default function RowCard({ row, columns, sira, tone = 'blue', onChange, onSil }) {
+export default function RowCard({
+  row,
+  columns,
+  sira,
+  tone = 'blue',
+  templateType,
+  onChange,
+  onSil,
+}) {
   const [acik, setAcik] = useState(true)
+
+  // `no` gibi alanlar mailde ÇİZİLİRKEN üretiliyor - kullanıcıya gösterilirse
+  // elle yazdığı değer ile mailde çıkan değer ayrışır (bkz. GIZLI_ALANLAR).
+  const gorunenSutunlar = columns.filter((alan) => !GIZLI_ALANLAR.includes(alan))
+
+  // Buton metni yazılmış ama adres boşsa mailde buton HİÇ çizilmiyor.
+  // Kullanıcı bunu ancak maili gönderdikten sonra fark ederdi.
+  const butonAdressiz =
+    columns.includes('url') && Boolean(row.button?.trim()) && !row.url?.trim()
 
   function alanDegisti(alan, deger) {
     onChange({ ...row, [alan]: deger })
   }
 
   return (
-    <div className={tone === 'green' ? 'satir-karti satir-karti--green' : 'satir-karti'}>
+    <div className={'satir-karti satir-karti--' + tone}>
       <div className="satir-karti__ust">
         <span className={`nokta nokta--${tone}`} aria-hidden="true" />
         <span className="satir-karti__no">{sira}. satır</span>
@@ -61,11 +105,17 @@ export default function RowCard({ row, columns, sira, tone = 'blue', onChange, o
         </Button>
       </div>
 
+      {acik && butonAdressiz && (
+        <div className="uyari uyari--dikkat" style={{ marginBottom: 12 }}>
+          Buton metni yazdınız ama adres boş — mailde buton çizilmez.
+        </div>
+      )}
+
       {acik && (
         <div className="izgara izgara--2">
-          {columns.map((alan) => {
+          {gorunenSutunlar.map((alan) => {
             const cokSatirli = COK_SATIRLI.includes(alan)
-            const secenekler = LISTELI[alan]
+            const listeSecenekleri = secenekler(alan, templateType)
 
             return (
               <label
@@ -75,14 +125,14 @@ export default function RowCard({ row, columns, sira, tone = 'blue', onChange, o
               >
                 <span className="alan__etiket">{ROW_FIELD_LABELS[alan] ?? alan}</span>
 
-                {secenekler ? (
+                {listeSecenekleri ? (
                   <select value={row[alan] ?? ''} onChange={(e) => alanDegisti(alan, e.target.value)}>
                     <option value="">—</option>
                     {/* Kayıtlı değer listede yoksa kaybolmasın: başa eklenir. */}
-                    {row[alan] && !secenekler.includes(row[alan]) && (
+                    {row[alan] && !listeSecenekleri.includes(row[alan]) && (
                       <option value={row[alan]}>{row[alan]}</option>
                     )}
-                    {secenekler.map((secenek) => (
+                    {listeSecenekleri.map((secenek) => (
                       <option key={secenek} value={secenek}>
                         {secenek}
                       </option>

@@ -585,11 +585,19 @@ textarea::placeholder {
 }
 
 /* Yeşil tonlu seçim (geliştirme bölümü, yeşil not). */
-.seg--yesil.seg--secili,
-.seg--yesil.seg--secili:hover {
+.seg--green.seg--secili,
+.seg--green.seg--secili:hover {
   background: var(--yesil);
   border-color: var(--yesil);
   box-shadow: 0 4px 12px rgba(63, 143, 46, 0.22);
+}
+
+/* Turuncu ton: Yönetici Özeti'nde bekleyen/dikkat gerektiren konular. */
+.seg--orange.seg--secili,
+.seg--orange.seg--secili:hover {
+  background: #c2620f;
+  border-color: #c2620f;
+  box-shadow: 0 4px 12px rgba(194, 98, 15, 0.22);
 }
 
 /* Mail tipi seçimi: radyo düğmesi yerine açıklamalı kutu. Tip sonradan
@@ -746,6 +754,11 @@ textarea::placeholder {
   background: #fbfdf7;
 }
 
+/* Turuncu: Yönetici Özeti'nin "bekleyen konular" bölümü. */
+.bolum--orange {
+  background: #fffcf6;
+}
+
 .bolum + .bolum {
   margin-top: 12px;
 }
@@ -772,6 +785,10 @@ textarea::placeholder {
   background: var(--fistik);
 }
 
+.nokta--orange {
+  background: #d97706;
+}
+
 /* ------------------------------------------------------------ satır kartı */
 
 .satir-karti {
@@ -784,6 +801,10 @@ textarea::placeholder {
 
 .satir-karti--green {
   background: #fcfdfa;
+}
+
+.satir-karti--orange {
+  background: #fffdf8;
 }
 
 .satir-karti__ust {
@@ -950,6 +971,44 @@ textarea::placeholder {
   min-height: 520px;
   border: 0;
   background: #fff;
+}
+
+/* ------------------------------------------------ satır içi düzenleme */
+
+/* Önizlemede tıklanan alanın üstüne açılan kutu. iframe'in İÇİNDE değil,
+   ana pencerede duruyor ve mailin üstüne konumlanıyor — iframe'e yazmak
+   mail HTML'ini istemcide değiştirmek olurdu (Mimari Kural 1). */
+.satir-ici {
+  position: fixed;
+  z-index: 60;
+  background: #fff;
+  border: 2px solid var(--mavi);
+  border-radius: 10px;
+  padding: 8px 9px 9px;
+  box-shadow: 0 14px 36px rgba(15, 42, 78, 0.24);
+}
+
+.satir-ici__etiket {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--mavi);
+}
+
+.satir-ici__ipucu {
+  font-weight: 600;
+  color: var(--soluk);
+  white-space: nowrap;
+}
+
+.satir-ici input,
+.satir-ici textarea {
+  border-radius: 7px;
+  padding: 7px 9px;
 }
 
 /* ------------------------------------------------------------------ modal */
