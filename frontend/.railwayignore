@@ -1,0 +1,10 @@
+# Railway CLI (railway up) bu dizini TARBALL yapip yukluyor. Docker build
+# baglami degil, YUKLEMENIN kendisi - .dockerignore burada gecerli DEGIL.
+# Kok dizindeki .railwayignore de gecerli degil: yuklemenin koku burasi.
+node_modules
+dist
+.git
+*.log
+.env
+.env.*
+!.env.example
