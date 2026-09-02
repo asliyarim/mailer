@@ -81,20 +81,45 @@ class MailHtmlRendererTest {
                     .contains("src=\"cid:hero\"")
                     .contains("src=\"cid:intro\"")
                     .contains("src=\"cid:notes\"")
-                    .contains("src=\"cid:logo\"")
-                    .contains("src=\"cid:mascot\"");
+                    .contains("src=\"cid:logo\"");
+            // Maskot footer'dan kaldirildi (yonetici istegi): hero'da
+            // zaten ayni maskot var. Mailde HIC gecmemeli.
+            assertThat(html).doesNotContain("cid:mascot");
         }
 
         @Test
-        @DisplayName("her görselin width/height niteliği açıkça yazılır")
+        @DisplayName("HİÇBİR görsel ölçüsüz çizilmez - yükseklik dahil")
         void gorsellerinOlculeriYazili() {
-            // Outlook, olculeri verilmeyen gorseli dogal boyutunda cizer -
-            // dosya buyukse mail dagilir.
-            assertThat(html)
-                    .contains("src=\"cid:hero\" width=\"315\" height=\"235\"")
-                    .contains("src=\"cid:intro\" width=\"120\" height=\"120\"")
-                    .contains("src=\"cid:notes\" width=\"225\" height=\"151\"")
-                    .contains("src=\"cid:mascot\" width=\"108\" height=\"99\"");
+            // Regresyon, yasandi: footer logosu yalnizca genislikle
+            // taniminca style'a "height:auto" yaziliyordu. Word'un
+            // donusturucusu onu anlamiyor ve gorseli YERLESTIREMIYOR -
+            // Outlook'a yapistirilan mailde logonun yerinde bos beyaz bir
+            // dikdortgen kaliyordu. Diger uc gorsel olculu oldugu icin
+            // cikiyordu; fark yalnizca buydu.
+            //
+            // Tek tek gorsel saymak yerine DESEN ariyoruz: yarin eklenen bir
+            // gorsel de ayni tuzaga dusmesin.
+            assertThat(html).doesNotContain("height:auto");
+
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                    .compile("<img src=\"cid:([a-z]+)\"([^>]*)>")
+                    .matcher(html);
+            int sayilan = 0;
+            while (m.find()) {
+                sayilan++;
+                assertThat(m.group(2))
+                        .as("cid:%s ölçüsüz çiziliyor", m.group(1))
+                        .containsPattern("width=\"\\d+\"")
+                        .containsPattern("height=\"\\d+\"");
+            }
+            assertThat(sayilan).as("hiç görsel bulunamadı").isPositive();
+        }
+
+        @Test
+        @DisplayName("logo alt metni taşır - çizilemezse ne olduğu görünsün")
+        void logoAltMetniTasir() {
+            assertThat(html).contains("src=\"cid:logo\"");
+            assertThat(html).contains("alt=\"Aksa | Kazancı Holding\"");
         }
 
         @Test

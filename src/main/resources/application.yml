@@ -38,6 +38,10 @@ springdoc:
     tags-sorter: alpha
 
 app:
+  # Uretim bayragi. true ise BaslangicDenetimi yanlis ayarda uygulamayi
+  # BASLATMAZ (orn. JWT sirri hala gelistirme varsayilaniysa). Yerelde false
+  # kalir; uyari yine log'a yazilir.
+  uretim: ${APP_URETIM:false}
   jwt:
     # odyssey-auth ile AYNI olmak zorunda. Yayinda APP_JWT_SECRET ile ezilir.
     secret: ${APP_JWT_SECRET:dev-only-secret-change-me-please-32-bytes-min}
@@ -58,8 +62,14 @@ app:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4173,http://localhost:5173,http://localhost:5174}
 
 server:
-  port: 8082
+  # PORT: Railway (ve cogu PaaS) dinlenecek portu bu degiskenle VERIR ve
+  # uygulamanin orayi dinlemesini bekler. Sabit 8082 kalsaydi saglik
+  # kontrolu basarisiz olur, servis "deploy oldu ama ayaga kalkmadi"
+  # gorunurdu. Yerelde ve docker-compose'da degisken yok, 8082 gecerli.
+  port: ${PORT:8082}
 
+# Uretimde DEBUG istemiyoruz: gurultulu ve mail icerigi log'a sizabilir.
+# Yerelde APP_LOG_LEVEL=DEBUG ile geri acilir.
 logging:
   level:
-    com.aksa.mailer: DEBUG
+    com.aksa.mailer: ${APP_LOG_LEVEL:INFO}

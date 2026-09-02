@@ -35,7 +35,7 @@ class EmlBuilderTest {
         MailHtmlRenderer renderer = new MailHtmlRenderer(List.of(new KapanisTemplate()));
         tema = ThemeRegistry.tema(RpaTheme.KEY);
         String html = renderer.uret(OrnekIcerik.kapanis(), TemplateType.KAPANIS, RpaTheme.KEY);
-        eml = new EmlBuilder(new CidImageResolver()).uret(html, KONU, tema);
+        eml = new EmlBuilder(new CidImageResolver()).uret(html, KONU, renderer.gorseller(TemplateType.KAPANIS, RpaTheme.KEY));
         metin = new String(eml, StandardCharsets.UTF_8);
     }
 

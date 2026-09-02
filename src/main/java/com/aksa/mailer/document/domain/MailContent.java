@@ -38,8 +38,25 @@ public record MailContent(
     public record Header(String title, String period, String teamLabel) {
     }
 
+    /**
+     * Toplanti bilgileri.
+     *
+     * Son uc alan (title, moderator, attendees) Toplanti Ciktilari sablonuyla
+     * geldi ve YALNIZCA orada ciziliyor. Diger tipler onlari tasiyabilir ama
+     * gostermez - alan eklemek sema surumunu artirmiyor cunku govde jsonb:
+     * eski kayitlarda yoklar, Jackson null okuyor.
+     */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Meeting(String date, String time, String place) {
+    public record Meeting(String date, String time, String place,
+                          String title, String moderator, String attendees) {
+
+        /**
+         * Uc alanli kisayol. Toplanti Ciktilari disindaki tipler bu ucunu
+         * kullanmiyor; her cagri yerinde uc bos dize yazmak gurultu olurdu.
+         */
+        public Meeting(String date, String time, String place) {
+            this(date, time, place, null, null, null);
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

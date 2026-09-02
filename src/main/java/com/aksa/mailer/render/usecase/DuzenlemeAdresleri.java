@@ -38,7 +38,7 @@ public class DuzenlemeAdresleri {
      * bakarak bunu yakaliyor.
      */
     private static final Pattern EDITOR_NITELIKLERI =
-            Pattern.compile("\\s+data-(alan|secenekler)=\"[^\"]*\"");
+            Pattern.compile("\\s+data-(alan|secenekler|bolum)=\"[^\"]*\"");
 
     public String soy(String html) {
         return EDITOR_NITELIKLERI.matcher(html).replaceAll("");

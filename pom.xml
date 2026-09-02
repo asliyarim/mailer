@@ -17,9 +17,30 @@
 	<properties>
 		<java.version>17</java.version>
 		<jjwt.version>0.12.6</jjwt.version>
+		<!-- HTML -> PDF. Mailin AYNI HTML'inden PDF uretiyoruz; ikinci bir
+		     cizim olmasin diye (Mimari Kural 1). -->
+		<openhtmltopdf.version>1.0.10</openhtmltopdf.version>
 	</properties>
 
 	<dependencies>
+		<dependency>
+			<groupId>com.openhtmltopdf</groupId>
+			<artifactId>openhtmltopdf-pdfbox</artifactId>
+			<version>${openhtmltopdf.version}</version>
+		</dependency>
+		<!-- Sablon HTML'i tarayici toleransina gore yaziliyor (kapanmayan <img>,
+		     <br> vb). openhtmltopdf ise XML bekliyor; jsoup araya girip
+		     duzgun bir DOM'a ceviriyor. -->
+		<dependency>
+			<groupId>com.openhtmltopdf</groupId>
+			<artifactId>openhtmltopdf-slf4j</artifactId>
+			<version>${openhtmltopdf.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.18.3</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>

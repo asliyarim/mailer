@@ -5,6 +5,7 @@ import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.MailContentValidator;
 import com.aksa.mailer.document.domain.TemplateType;
 import com.aksa.mailer.render.domain.MailTheme;
+import com.aksa.mailer.render.domain.ThemeImage;
 import com.aksa.mailer.render.domain.ThemeRegistry;
 import com.aksa.mailer.render.template.MailTemplate;
 import org.springframework.stereotype.Component;
@@ -47,6 +48,17 @@ public class MailHtmlRenderer {
     /** .eml uretimi icin: HTML ile birlikte kullanilacak temayi da dondurur. */
     public MailTheme tema(String themeKey) {
         return ThemeRegistry.tema(themeKey);
+    }
+
+    /**
+     * Uretilen HTML'in gosterdigi gorseller.
+     *
+     * SABLONA soruyoruz, temaya degil: hero iki toplanti sablonunda butun
+     * takimlarda ayni logo. Tema listesi kullanilsaydi HTML bir dosyayi
+     * gosterir, .eml baskasini ayni cid altinda gomerdi.
+     */
+    public List<ThemeImage> gorseller(TemplateType tip, String themeKey) {
+        return sablon(tip).gorseller(ThemeRegistry.tema(themeKey));
     }
 
     private MailTemplate sablon(TemplateType tip) {

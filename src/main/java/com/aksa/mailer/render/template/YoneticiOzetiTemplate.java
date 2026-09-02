@@ -4,6 +4,7 @@ import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.MailSection;
 import com.aksa.mailer.document.domain.TemplateType;
 import com.aksa.mailer.render.domain.MailTheme;
+import com.aksa.mailer.render.domain.ThemeImage;
 import com.aksa.mailer.render.domain.ToneColors;
 import org.springframework.stereotype.Component;
 
@@ -59,6 +60,16 @@ public class YoneticiOzetiTemplate extends MailIskeleti {
     @Override
     public TemplateType tip() {
         return TemplateType.YONETICI_OZETI;
+    }
+
+    /**
+     * Bolumun cark logosu - BUTUN TAKIMLARDA AYNI. Bu mail bir takimin degil
+     * bolumun ozeti; takim logosu yaniltici olurdu. Zemin yine takimin
+     * renginde kaliyor.
+     */
+    @Override
+    public ThemeImage heroGorseli(MailTheme tema) {
+        return tema.heroYoneticiOzeti();
     }
 
     // --- sayaclar -------------------------------------------------------------
@@ -206,7 +217,10 @@ public class YoneticiOzetiTemplate extends MailIskeleti {
         int genislik = 100 / kartlar.size();
         ToneColors renk = tema.colors(bolum.tone());
 
-        html.append("<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\"")
+        // Kart bloku tablo()'dan gecmiyor, isareti burada koyuyoruz - yoksa
+        // arayuz baglanti kartlarina kart ekleyemezdi.
+        html.append("<table role=\"presentation\"").append(bolumIsareti(bolum.key()))
+                .append(" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\"")
                 .append(" border=\"0\" style=\"table-layout:fixed;border-collapse:collapse\"><tr>");
 
         for (int i = 0; i < kartlar.size(); i++) {
@@ -214,7 +228,9 @@ public class YoneticiOzetiTemplate extends MailIskeleti {
             String zemin = KART_ZEMINLERI.get(i % KART_ZEMINLERI.size());
             String kartYolu = "sections." + bolum.key() + ".rows." + i + ".";
 
-            html.append("<td width=\"").append(genislik).append("%\" valign=\"top\" style=\"padding:8px\">")
+            // Kartin kendisi de "satir" - ekleme/silme/siralama icin capa.
+            html.append("<td").append(adres("sections." + bolum.key() + ".rows." + i))
+                    .append(" width=\"").append(genislik).append("%\" valign=\"top\" style=\"padding:8px\">")
                     .append("<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\"")
                     .append(" border=\"0\" style=\"background:").append(zemin)
                     .append(";border:1px solid ").append(tema.border())

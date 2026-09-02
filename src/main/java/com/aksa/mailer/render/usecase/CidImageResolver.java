@@ -1,5 +1,6 @@
 package com.aksa.mailer.render.usecase;
 
+import java.util.List;
 import com.aksa.mailer.render.domain.MailTheme;
 import com.aksa.mailer.render.domain.ThemeImage;
 import org.springframework.core.io.ClassPathResource;
@@ -28,9 +29,17 @@ public class CidImageResolver {
     private final Map<String, byte[]> onbellek = new LinkedHashMap<>();
 
     /** Temanin bes gorseli: cid -> ham bayt. Mailde gectikleri sirayla. */
-    public synchronized Map<String, byte[]> gorseller(MailTheme tema) {
+    /**
+     * Gorselleri LISTE ile aliyoruz, temayla degil.
+     *
+     * Sebep: hero SABLONA gore degisiyor (iki toplanti sablonu ortak logo
+     * kullaniyor) ama cid'i hep "hero". Tema listesi kullanilsaydi HTML
+     * dogru gorseli isaret eder, .eml YANLIS dosyayi ayni cid altinda
+     * gomerdi - Yonetici Ozeti mailinde takim logosu cikardi.
+     */
+    public synchronized Map<String, byte[]> gorseller(List<ThemeImage> gorselListesi) {
         Map<String, byte[]> sonuc = new LinkedHashMap<>();
-        for (ThemeImage gorsel : tema.images()) {
+        for (ThemeImage gorsel : gorselListesi) {
             sonuc.put(gorsel.cid(), oku(gorsel.resourcePath()));
         }
         return sonuc;

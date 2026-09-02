@@ -26,6 +26,10 @@ const TON_SECENEKLERI = [
 /** Bağlantı kartları bölümü - tablo değil, yan yana kartlar olarak çiziliyor. */
 const BAGLANTI_BOLUMU = 'links'
 
+// Bolum yapisi TIPE degil BOLUME bagli olan sablonlar: sutun secimi ve ham
+// satir sayaci burada anlamsiz (sayaclari sunucu baska kurallarla hesapliyor).
+const YAPISI_SABIT_TIPLER = [TEMPLATE_TYPES.YONETICI_OZETI, TEMPLATE_TYPES.TOPLANTI_CIKTILARI]
+
 export default function SectionList({ sections, templateType, onChange }) {
   function bolumGuncelle(index, yeniBolum) {
     onChange(sections.map((b, i) => (i === index ? yeniBolum : b)))
@@ -86,7 +90,7 @@ export default function SectionList({ sections, templateType, onChange }) {
           değil ("yer alan ekip" = tekrarsız ekip sayısı, "bekleyen konu" =
           durumu Tamamlandı OLMAYAN aksiyonlar). Buraya ham satır sayısını
           koysaydık ekrandaki rakam ile maildeki rakam ayrışırdı. */}
-      {sections.length > 0 && templateType !== TEMPLATE_TYPES.YONETICI_OZETI && (
+      {sections.length > 0 && !YAPISI_SABIT_TIPLER.includes(templateType) && (
         <div className="kpi-serit">
           <div className="kpi">
             <span className="kpi__sayi">{toplamSatir}</span>
@@ -169,7 +173,7 @@ export default function SectionList({ sections, templateType, onChange }) {
                 birbirinden tamamen farklı çiziliyor). Serbest sütun seçimi
                 "url" alanını görüşülen konular tablosuna eklemek gibi
                 anlamsız sonuçlar üretirdi. */}
-            {templateType !== TEMPLATE_TYPES.YONETICI_OZETI && (
+            {!YAPISI_SABIT_TIPLER.includes(templateType) && (
               <SutunSecimi
                 templateType={templateType}
                 columns={sutunlar}

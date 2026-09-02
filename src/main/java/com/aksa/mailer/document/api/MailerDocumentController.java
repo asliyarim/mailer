@@ -64,6 +64,7 @@ public class MailerDocumentController {
     @GetMapping("/recent")
     public List<ManageMailerDocumentsUseCase.DocumentSummary> sonBelgeler(
             @RequestParam(defaultValue = "12") int limit,
+            @RequestParam(required = false) String q,
             Authentication authentication) {
         OturumKullanicisi kullanici = OturumKullanicisi.of(authentication);
         List<Long> takimlar = kullanici.adminMi()
@@ -71,7 +72,7 @@ public class MailerDocumentController {
                 // olmayabilir, o yuzden kayitli takimlardan turetiyoruz.
                 ? teams.erisilebilirTakimlar(true, List.of()).stream().map(MailTeam::id).toList()
                 : kullanici.teamIds();
-        return documents.sonBelgeler(takimlar, limit);
+        return documents.sonBelgeler(takimlar, limit, q);
     }
 
     /**

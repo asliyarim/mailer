@@ -32,6 +32,18 @@ export const ALAN_NITELIGI = "data-alan";
  */
 export const SECENEK_NITELIGI = "data-secenekler";
 
+/**
+ * Bölümün mail içindeki yeri: <table data-bolum="discussed">.
+ *
+ * data-alan'dan AYRI bir soru cevaplıyor. data-alan bir içerik yolu -
+ * "şu metni düzenle" der. Bu ise "bölüm ekranda nerede" der; "+ satır ekle"
+ * düğmesini oraya koyabilmek için gerekiyor.
+ *
+ * Bölüm BOŞ olsa bile başlık çizildiği için bu çapa her zaman var - yani
+ * hiç satırı olmayan bölüme de satır eklenebiliyor.
+ */
+export const BOLUM_NITELIGI = "data-bolum";
+
 /** data-secenekler niteliğini diziye çevirir. Yoksa null. */
 export function secenekleriCoz(deger) {
   if (!deger) return null;
@@ -177,6 +189,38 @@ export function satirIslemi(content, adres, islem, bosSatir) {
       return content;
   }
   return alanaYaz(content, bolumAdresi, yeni);
+}
+
+/**
+ * İki satırın yerini değiştirir.
+ *
+ * Neden komşu takası değil de İKİ ADRES: Sprint Kapanış tablosu satırları
+ * sektöre göre grupluyor, yani ekrandaki sıra içerikteki sıra DEĞİL
+ * (içerik 0,1,2 → ekran 0,2,1 olabiliyor). "Bir aşağı" demek, içerikte
+ * bir sonraki değil EKRANDA bir sonraki satırla takas etmek demek; hangi
+ * satır olduğunu çağıran taraf DOM'dan buluyor.
+ */
+export function satirTakas(content, adresA, adresB) {
+  if (!satirAdresiMi(adresA) || !satirAdresiMi(adresB)) return content;
+  const a = satirAyristir(adresA);
+  const b = satirAyristir(adresB);
+  if (a.bolumAdresi !== b.bolumAdresi) return content;
+
+  const satirlar = alandanOku(content, a.bolumAdresi);
+  if (!Array.isArray(satirlar)) return content;
+  if (satirlar[a.index] === undefined || satirlar[b.index] === undefined) return content;
+
+  const yeni = [...satirlar];
+  [yeni[a.index], yeni[b.index]] = [yeni[b.index], yeni[a.index]];
+  return alanaYaz(content, a.bolumAdresi, yeni);
+}
+
+/** Bölümün SONUNA satır ekler. Önizlemedeki "+ satır ekle" bunu kullanır. */
+export function bolumeSatirEkle(content, bolumKey, bosSatir) {
+  const bolumAdresi = `sections.${bolumKey}.rows`;
+  const satirlar = alandanOku(content, bolumAdresi);
+  if (!Array.isArray(satirlar)) return content;
+  return alanaYaz(content, bolumAdresi, [...satirlar, bosSatir]);
 }
 
 /** Satırın bulunduğu bölümdeki satır sayısı - ilk/son satırı anlamak için. */

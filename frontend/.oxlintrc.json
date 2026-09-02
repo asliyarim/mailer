@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "env": { "browser": true, "es2024": true },
+  // vite.config.js Node ortaminda calisiyor - process orada var.
+  "globals": { "process": "readonly" },
+  "rules": {
+    "no-undef": "error"
+  }
+}

@@ -22,6 +22,8 @@ const TIP_ACIKLAMALARI = {
   PLANLAMA: 'Gelecek sprintin konuları: konu anahtarı, özet, durum, beklenen işler.',
   YONETICI_OZETI:
     'Görüşülen konular, alınan kararlar, bekleyen aksiyonlar ve erişim bağlantıları.',
+  TOPLANTI_CIKTILARI:
+    'Sprint dışı toplantının tutanağı: künye, konuşulanlar, resmî kararlar, sorumlular.',
 }
 
 // Sunucuda henüz şablonu olmayan tipler. Şablon geldiğinde bu liste boşalır;

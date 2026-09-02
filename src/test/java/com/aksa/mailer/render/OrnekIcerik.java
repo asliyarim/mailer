@@ -113,6 +113,49 @@ public final class OrnekIcerik {
     }
 
     /**
+     * Toplanti Ciktilari ornegi. Yapi prototipin "meeting_outcomes"
+     * sablonundan: toplanti kutusu + uc tablo, baglanti karti YOK.
+     */
+    public static MailContent toplantiCiktilari() {
+        return new MailContent(
+                1,
+                new MailContent.Header("TOPLANTI ÇIKTILARI VE ALINAN KARARLAR", "", "RPA Takımı"),
+                new MailContent.Meeting(
+                        "02.09.2026", "14:00 – 15:30", "Microsoft Teams & Toplantı Salonu A",
+                        "Dijital Dönüşüm & Süreç İyileştirme Değerlendirme Toplantısı",
+                        "Ahmet Yılmaz (Proje Yöneticisi)",
+                        "Dijital Uygulamalar, Ürün Yönetimi, İş Analizi"),
+                List.of("Toplantıda görüşülen konular, alınan kararlar ve takip edilecek "
+                        + "aksiyon maddeleri aşağıda bilgilerinize sunulmuştur."),
+                List.of(
+                        new MailSection("discussed", "1. KONUŞULAN VE DEĞERLENDİRİLEN KONULAR", Tone.BLUE,
+                                List.of("team", "topic", "detail"),
+                                List.of(
+                                        Map.of("team", "Dijital Uygulamalar", "topic", "ERP Servis Entegrasyonu",
+                                                "detail", "Asenkron kuyruk yapısına geçiş stratejisi değerlendirildi."),
+                                        Map.of("team", "RPA", "topic", "Fatura Doğrulama Kuralları",
+                                                "detail", "Yeni validasyon kuralları ve istisnalar ele alındı."))),
+                        new MailSection("decisions", "2. TOPLANTIDA ALINAN RESMİ KARARLAR", Tone.GREEN,
+                                List.of("no", "decision", "scope", "team"),
+                                List.of(
+                                        Map.of("no", "", "decision", "Asenkron kuyruk mimarisine geçilmesi",
+                                                "scope", "Mimari", "team", "Dijital Uygulamalar"))),
+                        new MailSection("actions", "3. BEKLENEN AKSİYONLAR VE SORUMLULAR", Tone.ORANGE,
+                                List.of("team", "pending", "owner", "due", "status"),
+                                List.of(
+                                        Map.of("team", "Dijital Uygulamalar", "pending", "PoC çalışmasının tamamlanması",
+                                                "owner", "Murat Can", "due", "08.09.2026", "status", "Devam Ediyor"),
+                                        // Ucuncu bir EKIP: "ilgili ekip" sayaci
+                                        // yalnizca gorusulen konulara baksaydi
+                                        // bu ekibi kacirirdi.
+                                        Map.of("team", "Test Ekibi", "pending", "Validasyon kurallarının doğrulanması",
+                                                "owner", "Test Ekibi", "due", "10.09.2026", "status", "Tamamlandı")))),
+                List.of(new MailContent.Note(Tone.GREEN,
+                        "Bir sonraki değerlendirme toplantısı 09.09.2026 saat 14:00'te planlanmıştır.")),
+                new MailContent.Footer("Teşekkür ederiz.", "Başarılar dileriz!"));
+    }
+
+    /**
      * Sprint Planlama ornegi. Veriler v6.1'in samplePlanning dizisinden.
      * Tek bolum - planlamada analiz/gelistirme ayrimi yok.
      */

@@ -1,15 +1,32 @@
-// Editorun ust eylem seridi: kaydet, "Outlook Maili İndir", PDF/Yazdır.
+// Editorun ust eylem seridi: kaydet, "Outlook Maili İndir", "Outlook İçin
+// Kopyala", "PDF İndir".
 //
-// .eml dosyasi SUNUCUDAN indirilir (GET .../export.eml) - istemcide mail
-// dosyasi kurulmaz. Gorseller cid: ile mailin icine gomulu geldigi icin bu
-// tek guvenilir yol (docs/BRIEF.md, Kural 3).
-//
-// Yazdirma da AYNI HTML'i kullanir: onizleme panelinden gelen, sunucunun
-// urettigi metin. Yazdirmak icin ikinci bir HTML kurulmaz (Kural 1).
+// UC CIKTININ UCU DE SUNUCUDAN GELIR - istemcide ne mail dosyasi kurulur ne
+// PDF cizilir (Mimari Kural 1):
+//   .eml  GET  /documents/{id}/export.eml   gorseller cid: ile gomulu
+//   pano  POST /render/clipboard            duzenleme nitelikleri soyulmus
+//   PDF   POST /render/pdf                  yazi tipi gomulu (Turkce harfler)
 
 import { useState } from 'react'
-import { fetchEml, logDownload, renderClipboard } from '../../lib/apiClient.js'
+import { fetchEml, logDownload, renderClipboard, renderPdf } from '../../lib/apiClient.js'
 import Button from '../shared/Button.jsx'
+
+/**
+ * Blob'u dosya olarak indirtir.
+ *
+ * revokeObjectURL HEMEN cagrilmaz: bazi tarayicilarda indirme daha
+ * baslamadan adres gecersiz olup dosya yarim kaliyor.
+ */
+function dosyaIndir(blob, ad) {
+  const url = URL.createObjectURL(blob)
+  const baglanti = document.createElement('a')
+  baglanti.href = url
+  baglanti.download = ad
+  document.body.appendChild(baglanti)
+  baglanti.click()
+  baglanti.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 
 /**
  * Panonun DUZ METIN karsiligi.
@@ -38,12 +55,12 @@ export default function TopActions({
   kaydediliyor,
   kaydedilmemis,
   hazir,
-  onizlemeHtml,
   onKaydet,
 }) {
   const [indiriliyor, setIndiriliyor] = useState(false)
   const [kopyalaniyor, setKopyalaniyor] = useState(false)
   const [kopyalandi, setKopyalandi] = useState(false)
+  const [pdfHazirlaniyor, setPdfHazirlaniyor] = useState(false)
   const [hata, setHata] = useState(null)
 
   /**
@@ -99,19 +116,13 @@ export default function TopActions({
   async function emlIndir() {
     setHata(null)
     setIndiriliyor(true)
-    let url
     try {
       const { blob, dosyaAdi } = await fetchEml(belge.id)
-      url = URL.createObjectURL(blob)
-      const baglanti = document.createElement('a')
-      baglanti.href = url
       // Ad SUNUCUDAN gelir: orada bilerek ASCII'ye indirgeniyor, cunku bazi
       // istemciler UTF-8 dosya adini bozuyor. Buradan "belge.title" yazmak
       // o karari bosa cikarirdi. Baslik okunamazsa yedege duseriz.
-      baglanti.download = dosyaAdi ?? `${belge.title || 'sprint-maili'}.eml`
-      document.body.appendChild(baglanti)
-      baglanti.click()
-      baglanti.remove()
+      dosyaIndir(blob, dosyaAdi ?? `${belge.title || 'sprint-maili'}.eml`)
+
       // Log basarisiz olsa da indirme bozulmamali - ayri try.
       try {
         await logDownload(belge.id, 'EML')
@@ -121,57 +132,44 @@ export default function TopActions({
     } catch (e) {
       setHata(e.message)
     } finally {
-      // revokeObjectURL'i hemen cagirmak bazi tarayicilarda indirmeyi iptal
-      // ediyor; tarayicinin dosyayi almasi icin kisa bir sure biraktik.
-      if (url) setTimeout(() => URL.revokeObjectURL(url), 1000)
       setIndiriliyor(false)
     }
   }
 
   /**
-   * PDF / Yazdır.
+   * PDF İndir.
    *
-   * Onizleme iframe'inin uzerinden print() CAGRILAMAZ: iframe sandbox=""
-   * ile calisiyor, yani script yok ve ayni kaynak erisimi yok - bu bilerek
-   * boyle, onizlenen HTML uygulamanin oturumuna erisemesin diye.
-   * O yuzden ayni HTML yeni bir pencereye yazilip orada yazdiriliyor.
+   * Yazdırma penceresi AÇILMIYOR: dosya doğrudan iniyor. Önceden
+   * window.print() ile tarayıcının yazdırma penceresi açılıyordu ve
+   * kullanıcının oradan "PDF olarak kaydet"i seçmesi gerekiyordu; ayrıca
+   * arka plan renkleri o pencerede kullanıcı ayarına kalıyordu.
    *
-   * Onizleme kaydedilmemis icerigi de gosterdigi icin cikti EKRANDA GORULEN
-   * mailin aynisidir - .eml'den farkli olarak sunucudaki kayitli surumu
-   * degil, o anki hali yazdirir.
+   * PDF'i SUNUCU üretiyor (aynı HTML'den, yazı tipi gömülü). İstemcide
+   * üretilseydi mail rasterize edilirdi - bulanık yazı ve ikinci bir çizim.
+   *
+   * .eml'den farkı: kaydedilmemiş içerikten üretilir, yani ekranda ne
+   * görüyorsan o iner. Önizleme ve pano da böyle çalışıyor.
    */
-  function yazdir() {
+  async function pdfIndir() {
     setHata(null)
-    if (!onizlemeHtml) {
-      setHata('Önizleme henüz hazır değil. Birkaç saniye sonra tekrar deneyin.')
-      return
-    }
+    if (!hazir) return
 
-    const pencere = window.open('', '_blank', 'width=900,height=1000')
-    if (!pencere) {
-      setHata('Tarayıcı yeni pencereyi engelledi. Bu site için açılır pencerelere izin verin.')
-      return
-    }
+    setPdfHazirlaniyor(true)
+    try {
+      const { blob, dosyaAdi } = await renderPdf({ teamId, templateType, content })
+      // Ad sunucudan gelir (ASCII'ye indirgenmiş). Gelmezse yedek.
+      dosyaIndir(blob, dosyaAdi ?? `${belge?.title || 'sprint-maili'}.pdf`)
 
-    pencere.document.write(onizlemeHtml)
-    pencere.document.close()
-    pencere.focus()
-
-    // Gorseller cozulmeden print() cagirilirsa cikti bos kutularla gelir.
-    // Yukleme bittiyse hemen, bitmediyse load olayinda yazdir.
-    function yazdirmayiBaslat() {
-      pencere.print()
-    }
-    if (pencere.document.readyState === 'complete') yazdirmayiBaslat()
-    else pencere.addEventListener('load', yazdirmayiBaslat, { once: true })
-
-    // Pencereyi kapatmiyoruz: kullanici yazdirmayi iptal edip tekrar
-    // deneyebilir ya da PDF olarak kaydetme yerini secebilir.
-    // Taslakta belge yok - olculecek bir kayit da yok.
-    if (belge) {
-      logDownload(belge.id, 'PDF').catch(() => {
-        // olcum kaydi; kullaniciyi ilgilendirmiyor
-      })
+      // Taslakta belge yok - ölçülecek kayıt da yok.
+      if (belge) {
+        logDownload(belge.id, 'PDF').catch(() => {
+          // olcum kaydi; kullaniciyi ilgilendirmiyor
+        })
+      }
+    } catch (e) {
+      setHata(e.message)
+    } finally {
+      setPdfHazirlaniyor(false)
     }
   }
 
@@ -209,8 +207,10 @@ export default function TopActions({
           {kopyalandi ? '✓ Kopyalandı' : kopyalaniyor ? 'Hazırlanıyor…' : 'Outlook İçin Kopyala'}
         </Button>
 
-        <Button onClick={yazdir} disabled={!onizlemeHtml}>
-          PDF / Yazdır
+        {/* Ilk PDF istegi yavas olabilir (yazi tipi ve PDF motoru isiniyor) -
+            durum gostermezsek kullanici ikinci kez basiyor. */}
+        <Button onClick={pdfIndir} disabled={!hazir || pdfHazirlaniyor}>
+          {pdfHazirlaniyor ? 'PDF hazırlanıyor…' : 'PDF İndir'}
         </Button>
       </div>
 

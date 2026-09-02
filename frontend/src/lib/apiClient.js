@@ -3,8 +3,14 @@
 //
 // "??" kasten kullanilir: prod'da VITE_API_BASE_URL bilerek BOS STRING olarak
 // build edilir (Odyssey ile ayni origin, bkz. docs/BRIEF.md §1). "||" olsaydi
-// bos string falsy oldugundan yanlislikla localhost'a duserdi.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8082";
+// bos string falsy oldugundan yedege duserdi.
+//
+// YEDEK DE BOS STRING, "localhost:8082" DEGIL. Sebep: degisken verilmeden
+// build alinirsa (Docker disinda elle "npm run build" gibi) localhost adresi
+// pakete GOMULUR ve uretimde her istek kullanicinin kendi makinesine gider.
+// Sessizce ve herkeste ayni sekilde bozulur. Bos string ise "ayni origin"
+// demek - gelistirmede vite proxy'si, uretimde Odyssey'in nginx'i karsilar.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 /**
  * Auth cerezleri (access_token/refresh_token) httpOnly oldugu icin JS'ten
@@ -53,12 +59,29 @@ async function tryRefreshSession() {
  * denemede X-CSRF-Token taze cerez degerinden yeniden okunsun (refresh,
  * XSRF-TOKEN cerezini rotate edebilir).
  */
+/**
+ * Sunucuya hic ulasilamadiginda tarayici "Failed to fetch" diye ham bir
+ * TypeError atiyor. Kullaniciya bunu gostermek "bir sey oldu ama ne
+ * bilmiyorum" demek; hangi durumda oldugunu ve ne yapacagini soyluyoruz.
+ * Sunucu yeniden baslatilirken (deploy) tam olarak bu yasaniyor.
+ */
+async function agaSor(path, init) {
+  try {
+    return await fetch(`${API_BASE_URL}${path}`, init);
+  } catch {
+    throw new ApiError(
+      "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.",
+      0
+    );
+  }
+}
+
 async function authFetch(path, buildInit) {
-  let response = await fetch(`${API_BASE_URL}${path}`, buildInit());
+  let response = await agaSor(path, buildInit());
   if (response.status === 401 && !isAuthEndpoint(path)) {
     const refreshed = await tryRefreshSession();
     if (refreshed) {
-      response = await fetch(`${API_BASE_URL}${path}`, buildInit());
+      response = await agaSor(path, buildInit());
     }
   }
   return response;
@@ -204,9 +227,15 @@ export async function fetchDefaultContent(teamId, templateType) {
  * documents?teamId= tek takim istiyor; PO'nun birden cok takimi olabildigi
  * icin giris sayfasi orada N ayri istek atmak zorunda kalirdi.
  */
-export async function fetchRecentDocuments(limit = 12) {
+export async function fetchRecentDocuments(limit = 12, arama = "") {
+  // Arama SUNUCUDA yapiliyor (baslik + donem, Turkce harf kurallariyla).
+  // Istemcide ikinci bir filtre YAZILMAZ: iki arama mantigi zamanla ayrisir
+  // ve "neden bu kayit cikmadi" sorusunun cevabi kaybolur.
+  const parametreler = new URLSearchParams({ limit: String(limit) });
+  if (arama.trim()) parametreler.set("q", arama.trim());
+
   const response = await authFetch(
-    `/api/mailer/documents/recent?limit=${encodeURIComponent(limit)}`,
+    `/api/mailer/documents/recent?${parametreler}`,
     getInit
   );
   await ensureOk(response, "Son belgeler alınamadı.");
@@ -283,6 +312,30 @@ export async function renderClipboard({ teamId, templateType, content }) {
   );
   await ensureOk(response, "Kopyalanacak mail üretilemedi.");
   return response.text();
+}
+
+/**
+ * "PDF İndir" - sunucu ayni HTML'den PDF uretir (docs/api.md).
+ *
+ * NEDEN SUNUCUDA: istemcide PDF uretmek maili ekran goruntusu gibi
+ * rasterize etmek demekti - bulanik yazi, sisen dosya, bozulan tablo ve
+ * mailin IKINCI bir cizimi (Mimari Kural 1). Sunucuda ayni HTML'den
+ * uretiliyor; Turkce harfler icin yazi tipi PDF'e gomuluyor, cunku PDF'in
+ * yerlesik fontlari s/g/i/I tasimiyor.
+ *
+ * Onizleme ve pano gibi KAYDEDILMEMIS icerikten uretir - ekranda ne
+ * gorunuyorsa o iner.
+ */
+export async function renderPdf({ teamId, templateType, content }) {
+  const response = await authFetch(
+    "/api/mailer/render/pdf",
+    jsonInit("POST", { teamId, templateType, content })
+  );
+  await ensureOk(response, "PDF üretilemedi.");
+  return {
+    blob: await response.blob(),
+    dosyaAdi: dosyaAdiCoz(response.headers.get("Content-Disposition")),
+  };
 }
 
 /**

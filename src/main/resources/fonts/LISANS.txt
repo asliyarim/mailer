@@ -1,0 +1,14 @@
+Droid Sans / Droid Sans Bold
+Telif: Google Inc.
+Lisans: Apache License 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+NEDEN BURADA: PDF ciktisi icin gomulu bir yazi tipi sart. PDF'in yerlesik
+(base-14) fontlari Turkce'ye ozgu harfleri - s, g, i, I - TASIMIYOR; onlarla
+uretilen PDF'te o harfler bos kutu cikiyor.
+
+Arial gomulemez (lisansi izin vermiyor). Droid Sans Apache 2.0 ile dagitilabilir
+ve butun Turkce harfleri, sapkali sesliler (a, i, u) dahil kapsiyor - dosyanin
+karakter tablosu okunarak dogrulandi.
+
+PdfUretici bu fontu "Arial", "Segoe UI", "Helvetica" ve "sans-serif" adlariyla
+kaydediyor; boylece sablon HTML'ine hic dokunulmadan dogru yazi tipi kullaniliyor.

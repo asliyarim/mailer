@@ -46,7 +46,13 @@ final class KurumsalTema {
      */
     static MailTheme olustur(String key, String displayName, String ana, String koyu,
                              String vurgu, String gorselKlasoru) {
-        String yol = "themes/" + gorselKlasoru + "/";
+        // HERO takima ozel: kendi renginde zemin, ustte logo bandi, altinda
+        // takim damgasi (scripts/tema-gorselleri-uret.js uretiyor).
+        String heroYolu = "themes/" + gorselKlasoru + "/";
+        // Digerleri TAKIMA GORE DEGISMIYOR - kurumsal logo ve dekoratif
+        // gorseller. Her klasore kopyalamak sekiz kat yer kaplar ve birinde
+        // yapilan duzeltme otekilere gecmezdi.
+        String ortak = "themes/ortak/";
         return new MailTheme(
                 key,
                 displayName,
@@ -61,10 +67,19 @@ final class KurumsalTema {
                 new ToneColors(ana, "#fbfdff", ana, ana, ana, ana),
                 YESIL,
                 TURUNCU,
-                new ThemeImage("hero", yol + "hero.png", 315, 235),
-                new ThemeImage("intro", yol + "intro.png", 120, 120),
-                new ThemeImage("notes", yol + "notes.png", 225, 151),
-                new ThemeImage("logo", yol + "logo.png", 285),
-                new ThemeImage("mascot", yol + "mascot.png", 108, 99));
+                new ThemeImage("hero", heroYolu + "hero.png", 315, 235),
+                new ThemeImage("hero", heroYolu + "hero-yonetici.png", 315, 235),
+                new ThemeImage("hero", heroYolu + "hero-toplanti.png", 315, 235),
+                new ThemeImage("intro", ortak + "intro.png", 120, 120),
+                new ThemeImage("notes", ortak + "notes.png", 225, 151),
+                // Logo da TAKIMA OZEL: zemini takimin footer rengiyle ayni.
+                // Ortak (lacivert zeminli) surum bordo footer'da mavi bir
+                // dikdortgen gosteriyordu; saydam surum ise Outlook'a
+                // yapistirinca kayboluyordu (Word beyaza duzlestiriyor,
+                // beyaz yazi gorunmez oluyor).
+                new ThemeImage("logo", heroYolu + "logo.png", 285, 34),
+                // Maskot artik cizilmiyor (footer'dan kaldirildi) ama tema
+                // alani duruyor; RPA'nin dosyasi yer tutucu.
+                new ThemeImage("mascot", "themes/rpa/mascot.png", 108, 99));
     }
 }

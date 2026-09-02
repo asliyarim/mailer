@@ -1,5 +1,6 @@
 package com.aksa.mailer.render.usecase;
 
+import java.util.List;
 import com.aksa.mailer.render.domain.MailTheme;
 import com.aksa.mailer.render.domain.ThemeImage;
 import org.springframework.stereotype.Component;
@@ -39,10 +40,10 @@ public class OnizlemeGorselleri {
     }
 
     /** cid: referanslarini ayni dosyanin base64 haliyle degistirir. */
-    public String gomulu(String html, MailTheme tema) {
-        Map<String, byte[]> icerikler = cozucu.gorseller(tema);
+    public String gomulu(String html, List<ThemeImage> gorselListesi) {
+        Map<String, byte[]> icerikler = cozucu.gorseller(gorselListesi);
         String sonuc = html;
-        for (ThemeImage gorsel : tema.images()) {
+        for (ThemeImage gorsel : gorselListesi) {
             byte[] veri = icerikler.get(gorsel.cid());
             if (veri == null) {
                 continue;

@@ -21,8 +21,8 @@
 //   1 · Belge ayarlari    2 · Mail bilgileri
 //   3 · Bolumler          4 · Alt notlar
 //
-// Sag panel canli onizleme. Onizlemenin HTML'i buraya da cikiyor (onHtml)
-// cunku "PDF / Yazdir" ayni HTML'i yazdiriyor - ikinci bir uretim YOK.
+// Sag panel canli onizleme. Yazdirma ve panoya kopyalama HTML'i sunucudan
+// AYRICA istiyor (/render/clipboard) - duzenleme nitelikleri olmadan.
 
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -34,7 +34,7 @@ import {
   saveDocument,
 } from '../../lib/apiClient.js'
 import { emptyContent, emptyRow, TEMPLATE_TYPES, validateContent } from '../../lib/mailContent.js'
-import { alanaYaz, satirIslemi } from '../../lib/icerikYolu.js'
+import { alanaYaz, bolumeSatirEkle, satirIslemi, satirTakas } from '../../lib/icerikYolu.js'
 import BelgeAyarlari from './BelgeAyarlari.jsx'
 import MetaForm from './MetaForm.jsx'
 import SectionList from './SectionList.jsx'
@@ -42,6 +42,7 @@ import NotesForm from './NotesForm.jsx'
 import PreviewPane from './PreviewPane.jsx'
 import TopActions from './TopActions.jsx'
 import VersiyonGecmisi from './VersiyonGecmisi.jsx'
+import Button from '../shared/Button.jsx'
 
 // Son kullanilan takim tarayicida hatirlanir: RPA'da calisan biri her
 // acilista listenin basindaki takimi degil kendi takimini bulsun.
@@ -86,8 +87,8 @@ export default function EditorPage({ onDurum }) {
   const [kaydedilmemis, setKaydedilmemis] = useState(false)
   const [gecmisAcik, setGecmisAcik] = useState(false)
   const [aciliyor, setAciliyor] = useState(true)
-  // Sunucudan gelen HAZIR onizleme HTML'i. Yazdirma bunu kullanir.
-  const [onizlemeHtml, setOnizlemeHtml] = useState('')
+  // "Tekrar dene" sayaci: artinca yukleme effect'leri yeniden calisir.
+  const [yenidenDeneme, setYenidenDeneme] = useState(0)
 
   const taslakKipi = !id
 
@@ -106,7 +107,7 @@ export default function EditorPage({ onDurum }) {
       })
       .catch((e) => setHatalar([e.message]))
       .finally(() => setAciliyor(false))
-  }, [id])
+  }, [id, yenidenDeneme])
 
   // --- taslak kipi: takimlar + varsayilan icerik ----------------------------
 
@@ -162,7 +163,7 @@ export default function EditorPage({ onDurum }) {
     return () => {
       iptal = true
     }
-  }, [id, aramaParametreleri])
+  }, [id, aramaParametreleri, yenidenDeneme])
 
   // Kayitli belge kipinde de takimlara ihtiyac var (kunye etiketi).
   useEffect(() => {
@@ -211,8 +212,6 @@ export default function EditorPage({ onDurum }) {
     setKaydedilmemis(true)
   }
 
-  const onizlemeGeldi = useCallback((html) => setOnizlemeHtml(html), [])
-
   /**
    * Önizlemede tıklanan alana yazılan değer.
    *
@@ -231,8 +230,18 @@ export default function EditorPage({ onDurum }) {
    * Soldaki kartlardaki "+ Satır ekle" / "Sil" ile AYNI veriyi değiştiriyor;
    * yalnızca giriş noktası farklı.
    */
-  const satirIslemiYapildi = useCallback((adres, islem) => {
-    setContent((onceki) => satirIslemi(onceki, adres, islem, emptyRow()))
+  const satirIslemiYapildi = useCallback((adres, islem, hedefAdres) => {
+    setContent((onceki) =>
+      islem === 'takas'
+        ? satirTakas(onceki, adres, hedefAdres)
+        : satirIslemi(onceki, adres, islem, emptyRow())
+    )
+    setKaydedilmemis(true)
+  }, [])
+
+  /** Önizlemedeki "+ satır ekle": bölümün sonuna boş satır. */
+  const bolumeEkle = useCallback((bolumKey) => {
+    setContent((onceki) => bolumeSatirEkle(onceki, bolumKey, emptyRow()))
     setKaydedilmemis(true)
   }, [])
 
@@ -358,7 +367,6 @@ export default function EditorPage({ onDurum }) {
           kaydediliyor={kaydediliyor}
           kaydedilmemis={kaydedilmemis}
           hazir={formGoster}
-          onizlemeHtml={onizlemeHtml}
           onKaydet={kaydet}
         />
 
@@ -387,6 +395,22 @@ export default function EditorPage({ onDurum }) {
                 <li key={h}>{h}</li>
               ))}
             </ul>
+            {/* Sunucuya ulasilamadiginda sayfa kendi kendine toparlanmiyordu:
+                istek bir kez basarisiz olunca yeniden denenmiyor ve kullanici
+                sayfayi yenilemek zorunda kaliyordu. Sunucu yeniden baslatilinca
+                (deploy sirasinda oluyor) tam olarak bu yasaniyor. */}
+            <div style={{ marginTop: 10 }}>
+              <Button
+                varyant="ikincil"
+                boyut="kucuk"
+                onClick={() => {
+                  setHatalar([])
+                  setYenidenDeneme((n) => n + 1)
+                }}
+              >
+                Tekrar dene
+              </Button>
+            </div>
           </div>
         )}
 
@@ -420,6 +444,7 @@ export default function EditorPage({ onDurum }) {
 
             <MetaForm
               takimAdlari={teams.map((t) => t.name)}
+              toplantiKutusu={templateType === TEMPLATE_TYPES.TOPLANTI_CIKTILARI}
               header={content.header}
               meeting={content.meeting}
               intro={content.intro}
@@ -450,9 +475,10 @@ export default function EditorPage({ onDurum }) {
           templateType={templateType}
           content={content}
           hazirlaniyor={!formGoster}
-          onHtml={onizlemeGeldi}
           onAlanDegisti={alanDegisti}
+          yenileme={yenidenDeneme}
           onSatirIslemi={satirIslemiYapildi}
+          onBolumeEkle={bolumeEkle}
         />
       </section>
 

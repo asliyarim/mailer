@@ -23,8 +23,16 @@ final class VarsayilanIcerik {
     private VarsayilanIcerik() {
     }
 
+    /**
+     * "sector" VARSAYILAN OLARAK KAPALI.
+     *
+     * Acik oldugunda tablo sektore gore GRUPLANIYOR ve sutun olarak
+     * cizilmiyor; yani kullanici sutunu gormeden davranisi degistiriyor.
+     * Sektor ayrimina ihtiyaci olan takim sutun secimiden acar - o zaman
+     * gruplama da geri gelir. Ihtiyaci olmayan icin sade bir tablo kaliyor.
+     */
     private static final List<String> KAPANIS_SUTUNLARI =
-            List.of("sector", "jira", "ci", "process", "stage", "stake", "note");
+            List.of("jira", "ci", "process", "stage", "stake", "note");
 
     /**
      * Planlama alanlari v6.1'in planningRowCard'indan. "sprint", "sector" ve
@@ -55,10 +63,53 @@ final class VarsayilanIcerik {
                 bos.schemaVersion(),
                 baslik(tip, takimAdi),
                 bos.meeting(),
-                bos.intro(),
+                girisParagraflari(tip, takimAdi),
                 bolumler(tip),
                 bos.notes(),
-                bos.footer());
+                kapanis());
+    }
+
+    /**
+     * Giris paragraflari DOLU dogar.
+     *
+     * Bu metinler her mailde neredeyse aynen tekrarlanan kurumsal ifadeler;
+     * kullaniciyi her seferinde bastan yazdirmanin anlami yok. Prototiplerdeki
+     * metinlerin aynisi. Kullanici degistirebilir - baslangic degeri.
+     *
+     * Takim adi metne giriyor ama SABIT DEGIL: "Ürün Geliştirme olarak..."
+     * diye baslayan cumle her takimda kendi adiyla cikiyor.
+     */
+    private static List<String> girisParagraflari(TemplateType tip, String takimAdi) {
+        String ad = takimAdi == null || takimAdi.isBlank() ? "Ekibimiz" : takimAdi.trim();
+        // "RPA Takımı olarak" degil "RPA olarak" - cumlede daha dogal duruyor.
+        String ozne = TAKIM_SOZCUGU.matcher(ad).replaceAll("");
+
+        return switch (tip) {
+            case KAPANIS -> List.of(
+                    ozne + " olarak, bu sprint döneminde canlıya alınan ve analiz çalışmaları "
+                            + "tamamlanan işler aşağıda bilgilerinize sunulmuştur.",
+                    "Gerçekleştirilen çalışmaların ilgili paydaşlarla paylaşılması ve sonuçların "
+                            + "birlikte değerlendirilmesi amacıyla Sprint Kapanış Toplantısı planlanmıştır.");
+            case PLANLAMA -> List.of(
+                    ozne + " olarak, bu sprint içerisinde ele alacağımız çalışmalar aşağıda "
+                            + "bilgilerinize sunulmuştur.",
+                    "Çalışmaların planlanan takvime uygun ilerleyebilmesi amacıyla, “Bekleyen "
+                            + "Konular” alanında belirtilen bilgi, doküman, onay ve aksiyonların "
+                            + "ilgili paydaşlar tarafından tamamlanmasını rica ederiz.");
+            case YONETICI_OZETI -> List.of(
+                    "Gerçekleştirilen Sprint Bilgilendirme ve Değerlendirme Toplantısı kapsamında "
+                            + "ekiplerin güncel çalışmaları ve sprint çıktıları değerlendirilmiştir.",
+                    "Toplantıda görüşülen konular, alınan kararlar ve takip edilmesi gereken "
+                            + "aksiyonlar aşağıda bilgilerinize sunulmuştur.");
+            case TOPLANTI_CIKTILARI -> List.of(
+                    "Gerçekleştirilen toplantı kapsamında görüşülen konular, alınan kararlar ve "
+                            + "takip edilecek aksiyon maddeleri aşağıda bilgilerinize sunulmuştur.");
+        };
+    }
+
+    /** Kapanis satirlari da dolu dogar - dort mailde de ayni ifade. */
+    private static MailContent.Footer kapanis() {
+        return new MailContent.Footer("Bilgilerinize sunar,", "iyi çalışmalar dileriz!");
     }
 
     /**
@@ -75,6 +126,12 @@ final class VarsayilanIcerik {
         String ad = takimAdi == null ? "" : takimAdi.trim();
         String kisa = TAKIM_SOZCUGU.matcher(ad).replaceAll("").toUpperCase(TURKCE);
 
+        // Toplanti Ciktilari TAKIMLAR USTU: basligina takim adi konmaz.
+        // Sprint disi bir toplantinin ciktisi bir takimin adiyla baslamaz.
+        if (tip == TemplateType.TOPLANTI_CIKTILARI) {
+            return new MailContent.Header("TOPLANTI ÇIKTILARI VE ALINAN KARARLAR", "", ad);
+        }
+
         String son = switch (tip) {
             // Iki prototip de ayni ibareyi kullaniyor; tip ayrimi baslikta
             // degil belgenin kendisinde gorunuyor.
@@ -82,6 +139,7 @@ final class VarsayilanIcerik {
             // Yonetici ozetinin prototipi henuz yok; "bilgilendirme" demek
             // yaniltici olurdu.
             case YONETICI_OZETI -> "SPRINT YÖNETİCİ ÖZETİ";
+            case TOPLANTI_CIKTILARI -> throw new IllegalStateException("yukarida ele alindi");
         };
 
         // period BOS birakiliyor: sprint numarasi ve tarih araligi takimdan
@@ -116,6 +174,17 @@ final class VarsayilanIcerik {
                     // icerik yapisi diger bolumlerle ayni kalir.
                     new MailSection("links", "İNCELEME VE ERİŞİM BAĞLANTILARI", Tone.BLUE,
                             List.of("linkType", "title", "description", "button", "url"), List.of()));
+            // Toplanti Ciktilari. Yonetici Ozeti'ne benziyor ama baglanti
+            // kartlari YOK ve kararlarda KAPSAM sutunu VAR - resmi bir karar
+            // kaydinda "hangi alanda karar alindi" ayri bir bilgi.
+            // Bolum basliklari numarali: bu mail bir tutanak gibi okunuyor.
+            case TOPLANTI_CIKTILARI -> List.of(
+                    new MailSection("discussed", "1. KONUŞULAN VE DEĞERLENDİRİLEN KONULAR", Tone.BLUE,
+                            List.of("team", "topic", "detail"), List.of()),
+                    new MailSection("decisions", "2. TOPLANTIDA ALINAN RESMİ KARARLAR", Tone.GREEN,
+                            List.of("no", "decision", "scope", "team"), List.of()),
+                    new MailSection("actions", "3. BEKLENEN AKSİYONLAR VE SORUMLULAR", Tone.ORANGE,
+                            List.of("team", "pending", "owner", "due", "status"), List.of()));
         };
     }
 }

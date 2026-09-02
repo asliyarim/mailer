@@ -414,7 +414,7 @@ kontrol "eml dosya adi ASCII" "temiz" \
      | grep -qE '[ğüşıöçĞÜŞİÖÇ]' && echo kirli || echo temiz)"
 kontrol "eml X-Unsent tasiyor" "var" \
   "$(grep -qF 'X-Unsent: 1' "$GECICI/mail.eml" && echo var || echo yok)"
-kontrol "eml bes gorseli gomuyor" 5 \
+kontrol "eml dort gorseli gomuyor" 4 \
   "$(grep -c '^Content-ID: <' "$GECICI/mail.eml")"
 # .eml govdesi base64 kodlu - cid: duz metin olarak GECMEZ, once cozmek
 # gerekiyor. Cozulmus HTML'de cid: olmali, data: OLMAMALI: Outlook data:
@@ -455,6 +455,22 @@ kontrol "ayni satirin diger sutunlari duzenlenebilir" "var" \
   "$(grep -qF 'data-alan="sections.decisions.rows.0.decision"' "$GECICI/yonetici.html" \
      && echo var || echo yok)"
 
+# BOS belgede de her bolumun capasi olmali: kullanici hicbir sey doldurmadan
+# sagdaki sablona baktiginda her basligin altinda "+ satir ekle" cikabilsin.
+# Bunun icin BOS bir taslagi -dokunmadan- onizleyip capalari ariyoruz.
+node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+  const b=JSON.parse(s);
+  process.stdout.write(JSON.stringify({teamId:b.teamId,templateType:b.templateType,content:b.content}));
+})' < "$GECICI/olusan.json" > "$GECICI/bos-onizleme.json"
+curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+  -H 'Content-Type: application/json; charset=UTF-8' \
+  --data-binary "@$GECICI/bos-onizleme.json" "$TABAN/api/mailer/render/preview" \
+  > "$GECICI/bos.html"
+kontrol "bos belgede analiz bolumunun capasi var" "var" \
+  "$(grep -qF 'data-bolum="analysis"' "$GECICI/bos.html" && echo var || echo yok)"
+kontrol "bos belgede gelistirme bolumunun capasi var" "var" \
+  "$(grep -qF 'data-bolum="development"' "$GECICI/bos.html" && echo var || echo yok)"
+
 # Satirin kendisi de adresli: arayuz ekleme/silme/siralama dugmelerini
 # bunun uzerine konumlandiriyor, hucrelerden cikarim yapmiyor.
 kontrol "satir capasi basiliyor" "var" \
@@ -477,10 +493,58 @@ kontrol "pano HTML'i uretiliyor" "var" \
   "$(grep -q 'GÖRÜŞÜLEN KONULAR' "$GECICI/pano.html" && echo var || echo yok)"
 kontrol "pano HTML'inde duzenleme niteligi yok" "temiz" \
   "$(grep -q 'data-' "$GECICI/pano.html" && echo KIRLI || echo temiz)"
-kontrol "pano HTML'inde gorseller gomulu" "var" \
+# Panoda gorseller GOMULU gelir. Bir kez mutlak adrese cevrilmisti ve GERI
+# ALINDI: Outlook adresleri cekmedi, yazdirma da gorseller inmeden basti.
+kontrol "pano HTML'inde gorseller GOMULU" "var" \
   "$(grep -qF 'data:image/' "$GECICI/pano.html" && echo var || echo yok)"
 kontrol "pano HTML'inde cozulmemis cid: kalmaz" "temiz" \
   "$(grep -qF 'src="cid:' "$GECICI/pano.html" && echo KIRLI || echo temiz)"
+# Hero SABLONA gore degisiyor: iki toplanti sablonu butun takimlarda ORTAK
+# logo kullaniyor. Kritik olan sudur - gomulen dosya, HTML'in gosterdigiyle
+# AYNI olmali. Hero'nun cid'i her sablonda "hero" oldugu icin yanlis dosya
+# ayni cid altinda gomulseydi kirik gorsel CIKMAZDI; mail sessizce yanlis
+# logoyla giderdi ve kimse fark etmezdi.
+curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+  -H 'Content-Type: application/json; charset=UTF-8' \
+  --data-binary "@$GECICI/taze-onizleme.json" "$TABAN/api/mailer/render/clipboard" \
+  > "$GECICI/pano-kapanis.html"
+
+kontrol "yonetici ozetinin hero'su takiminkinden FARKLI" "farkli" \
+  "$(node -e '
+const fs=require("fs"),crypto=require("crypto");
+const oz=(d)=>{const h=fs.readFileSync(d,"utf8");
+  const m=[...h.matchAll(/src="data:image\/png;base64,([^"]+)"/g)];
+  return crypto.createHash("md5").update(m[0][1]).digest("hex");};
+console.log(oz(process.argv[1])===oz(process.argv[2])?"AYNI":"farkli");
+' "$GECICI/pano.html" "$GECICI/pano-kapanis.html")"
+
+# --- PDF ---------------------------------------------------------------------
+# "PDF İndir" dogrudan dosya indiriyor; tarayicinin yazdirma penceresi
+# ACILMIYOR ve PDFCreator gibi bir yardimci gerekmiyor.
+curl -s -D "$GECICI/pdf-basliklar.txt" -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+  -H 'Content-Type: application/json; charset=UTF-8' \
+  --data-binary "@$GECICI/yonetici.json" "$TABAN/api/mailer/render/pdf" -o "$GECICI/mail.pdf"
+
+kontrol "pdf uretiliyor" "var" \
+  "$(head -c 5 "$GECICI/mail.pdf" | grep -q '%PDF' && echo var || echo yok)"
+kontrol "pdf application/pdf donuyor" "var" \
+  "$(grep -qi 'Content-Type: application/pdf' "$GECICI/pdf-basliklar.txt" && echo var || echo yok)"
+kontrol "pdf dosya olarak iniyor" "var" \
+  "$(grep -qi 'Content-Disposition: attachment' "$GECICI/pdf-basliklar.txt" && echo var || echo yok)"
+kontrol "pdf dosya adi ASCII" "temiz" \
+  "$(grep -i 'Content-Disposition:' "$GECICI/pdf-basliklar.txt" \
+     | grep -qE '[ğüşıöçĞÜŞİÖÇ]' && echo kirli || echo temiz)"
+# Yazi tipi GOMULU olmali: PDF'in yerlesik fontlari Turkce harfleri tasimiyor,
+# gomulmezse s/g/i/I yerine bos kutu cikar.
+kontrol "pdf yazi tipini gomuyor" "var" \
+  "$(grep -a -c 'FontFile2' "$GECICI/mail.pdf" | grep -qv '^0$' && echo var || echo yok)"
+kontrol "pdf gorselleri tasiyor" "var" \
+  "$(grep -a -c '/Subtype */Image' "$GECICI/mail.pdf" | grep -qv '^0$' && echo var || echo yok)"
+kontrol "yetkisiz takim adina pdf uretilemez" 403 \
+  "$(kod -X POST -b "$BASKA; XSRF-TOKEN=$CSRF" -H "X-CSRF-Token: $CSRF" \
+      -H 'Content-Type: application/json; charset=UTF-8' \
+      --data-binary "@$GECICI/yonetici.json" "$TABAN/api/mailer/render/pdf")"
+
 kontrol "yetkisiz takim adina pano uretilemez" 403 \
   "$(kod -X POST -b "$BASKA; XSRF-TOKEN=$CSRF" -H "X-CSRF-Token: $CSRF" \
       -H 'Content-Type: application/json; charset=UTF-8' \
@@ -497,6 +561,38 @@ kontrol "son belgeler takim bilgisi tasiyor" "var" \
 # Limit sunucuda sinirli: istemci butun tabloyu cekemez.
 kontrol "son belgeler limiti asilamaz" 200 \
   "$(kod -b "$CEREZ" "$TABAN/api/mailer/documents/recent?limit=100000")"
+
+# Arama kutusu: baslikta VE donemde arar. Donem ozette tasinmasaydi kullanici
+# sprint numarasiyla arayamazdi - o bilgi yalnizca content.header.period'da.
+kontrol "ozet donemi tasiyor" "var" \
+  "$(curl -s -b "$CEREZ" "$TABAN/api/mailer/documents/recent" \
+     | grep -q '"period"' && echo var || echo yok)"
+kontrol "arama baslikla suzer" "var" \
+  "$(curl -s -b "$CEREZ" --get --data-urlencode 'q=DUMAN' \
+      "$TABAN/api/mailer/documents/recent" | alan length | grep -qv '^0$' && echo var || echo yok)"
+kontrol "eslesmeyen arama bos doner" 0 \
+  "$(curl -s -b "$CEREZ" --get --data-urlencode 'q=boyle-bir-sey-yok-xyz' \
+      "$TABAN/api/mailer/documents/recent" | alan length)"
+# Turkce harf kurallari: varsayilan locale'de "İ".toLowerCase() Latin "i" ile
+# eslesmez; kucuk yazip bulabilmeli.
+kontrol "arama Turkce harfe duyarsiz" "var" \
+  "$(curl -s -b "$CEREZ" --get --data-urlencode 'q=duman testi' \
+      "$TABAN/api/mailer/documents/recent" | alan length | grep -qv '^0$' && echo var || echo yok)"
+
+# Ozet TAKIM ADINI tasimali ve arama onu da taramali. ADMIN butun takimlarin
+# belgelerini goruyor; en dogal filtre "hangi takim". Bunlar olmadan kullanici
+# "iş" yazip Is Zekasi'nin belgelerini suzemiyordu - yasandi.
+kontrol "ozet takim adini tasiyor" "var" \
+  "$(curl -s -b "$CEREZ" "$TABAN/api/mailer/documents/recent" \
+     | grep -q '"teamName"' && echo var || echo yok)"
+kontrol "arama takim adiyla suzer" "var" \
+  "$(curl -s -b "$CEREZ" "$TABAN/api/mailer/documents/recent?q=RPA" \
+     | alan length | grep -qv '^0$' && echo var || echo yok)"
+# Sapkali sesli katlanir: kayitli ad "İş Zekâsı" ama kullanici "Zekası" yazar.
+# ı/ş/ğ/ü/ö/ç KATLANMAZ - Turkce'de ayri harfler.
+kontrol "sapkali sesli katlanir" "var" \
+  "$(curl -s -b "$CEREZ" --get --data-urlencode 'q=zekası' \
+      "$TABAN/api/mailer/documents/recent" | alan length | grep -qv '^0$' && echo var || echo yok)"
 
 kontrol "indirme logu kaydediliyor" 204 \
   "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \

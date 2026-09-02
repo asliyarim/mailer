@@ -60,10 +60,12 @@ public final class RpaTheme {
                         "#e07714",
                         "#ef7a16"),
                 new ThemeImage("hero", "themes/rpa/hero.png", 315, 235),
-                new ThemeImage("intro", "themes/rpa/intro.png", 120, 120),
-                new ThemeImage("notes", "themes/rpa/notes.png", 225, 151),
+                new ThemeImage("hero", "themes/rpa/hero-yonetici.png", 315, 235),
+                new ThemeImage("hero", "themes/rpa/hero-toplanti.png", 315, 235),
+                new ThemeImage("intro", "themes/ortak/intro.png", 120, 120),
+                new ThemeImage("notes", "themes/ortak/notes.png", 225, 151),
                 // Footer logosu: yalnizca genislik verilir, yukseklik oranla.
-                new ThemeImage("logo", "themes/rpa/logo.png", 285),
+                new ThemeImage("logo", "themes/rpa/logo.png", 285, 34),
                 new ThemeImage("mascot", "themes/rpa/mascot.png", 108, 99));
     }
 }

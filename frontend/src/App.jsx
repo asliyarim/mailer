@@ -58,7 +58,7 @@ export default function App() {
         <div>
           <p className="bos-durum__baslik">Oturumunuz bulunamadı</p>
           <p className="bos-durum__metin">
-            Aksa Mailer, Odyssey oturumuyla çalışır. Giriş yaptıktan sonra
+            Aksa Mailler, Odyssey oturumuyla çalışır. Giriş yaptıktan sonra
             uygulamayı katalogdan yeniden açın.
           </p>
           <a className="btn btn--birincil" href={odysseyUrl}>

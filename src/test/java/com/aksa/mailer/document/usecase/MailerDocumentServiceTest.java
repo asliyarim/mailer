@@ -10,6 +10,7 @@ import com.aksa.mailer.document.domain.MailerDocument;
 import com.aksa.mailer.document.domain.TemplateType;
 import com.aksa.mailer.document.domain.Tone;
 import com.aksa.mailer.document.port.in.ManageMailerDocumentsUseCase;
+import com.aksa.mailer.document.port.in.ManageMailerDocumentsUseCase.DocumentSummary;
 import com.aksa.mailer.document.port.out.MailerDocumentRepository;
 import com.aksa.mailer.document.port.out.MailerDocumentVersionRepository;
 import com.aksa.mailer.document.port.out.MailerDownloadLogRepository;
@@ -60,7 +61,13 @@ class MailerDocumentServiceTest {
     private static final class SahteTakimlar implements GetTeamsUseCase {
         @Override
         public List<MailTeam> erisilebilirTakimlar(boolean adminMi, List<Long> teamIds) {
-            return List.of(takim(1L));
+            // Gercek gerceklemenin sozlesmesi: ISTENEN kimlikleri doner.
+            // Girdiyi yok sayan bir sahte, takim adi cozumunu test etmiyor
+            // gibi gosterirdi.
+            return teamIds.stream()
+                    .filter(id -> id == 1L || id == 5L)
+                    .map(this::takim)
+                    .toList();
         }
 
         @Override
@@ -159,13 +166,90 @@ class MailerDocumentServiceTest {
 
         // Giris sayfasi tek istekle iki takimin belgesini de gormeli - bir
         // PO'nun birden cok takimi olabiliyor.
-        assertThat(service.sonBelgeler(List.of(1L, 5L), 10)).hasSize(2);
-        assertThat(service.sonBelgeler(List.of(1L), 10)).hasSize(1);
+        assertThat(service.sonBelgeler(List.of(1L, 5L), 10, null)).hasSize(2);
+        assertThat(service.sonBelgeler(List.of(1L), 10, null)).hasSize(1);
 
         // Istemci limit=100000 yollayip butun tabloyu cekemez; limit=0 da
         // sessizce bos liste dondurmez.
-        assertThat(service.sonBelgeler(List.of(1L, 5L), 100_000)).hasSize(2);
-        assertThat(service.sonBelgeler(List.of(1L, 5L), 0)).hasSize(1);
+        assertThat(service.sonBelgeler(List.of(1L, 5L), 100_000, null)).hasSize(2);
+        assertThat(service.sonBelgeler(List.of(1L, 5L), 0, null)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("arama başlıkta VE dönemde arar")
+    void aramaBaslikVeDonemdeArar() {
+        MailerDocument belge = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "Ağustos Kapanışı", SICIL));
+        // Donemi doldur - sprint numarasi burada yasiyor.
+        MailContent icerik = new MailContent(
+                1,
+                new MailContent.Header("Başlık", "Sprint 42 · Eylül 2026", "RPA Takımı"),
+                belge.content().meeting(), belge.content().intro(),
+                belge.content().sections(), belge.content().notes(), belge.content().footer());
+        service.kaydet(new ManageMailerDocumentsUseCase.SaveDocumentCommand(
+                belge.id(), "Ağustos Kapanışı", null, icerik, 1, SICIL));
+
+        // Baslikla
+        assertThat(service.sonBelgeler(List.of(1L), 10, "ağustos")).hasSize(1);
+        // Sprint numarasiyla - donem ozette TASINMASAYDI bu imkansizdi
+        assertThat(service.sonBelgeler(List.of(1L), 10, "Sprint 42")).hasSize(1);
+        assertThat(service.sonBelgeler(List.of(1L), 10, "eylül")).hasSize(1);
+        // Eslesmeyen
+        assertThat(service.sonBelgeler(List.of(1L), 10, "mart")).isEmpty();
+        // Bos arama suzmez
+        assertThat(service.sonBelgeler(List.of(1L), 10, "   ")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("arama TAKIM ADIYLA da süzer - admin'in en doğal filtresi")
+    void aramaTakimAdiylaSuzer() {
+        service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "Bir", SICIL));
+        service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                5L, TemplateType.PLANLAMA, "İki", SICIL));
+
+        // Regresyon: once yalnizca baslik ve donem taraniyordu. ADMIN butun
+        // takimlarin belgelerini goruyor ve "dijital" yazip o takimin
+        // belgelerini suzmek en dogal beklenti - hicbir sey bulunmuyordu.
+        List<DocumentSummary> dijital = service.sonBelgeler(List.of(1L, 5L), 10, "dijital");
+        assertThat(dijital).hasSize(1);
+        assertThat(dijital.get(0).teamId()).isEqualTo(5L);
+
+        assertThat(service.sonBelgeler(List.of(1L, 5L), 10, "rpa")).hasSize(1);
+
+        // Ozet takim adini TASIMALI - arayuz admin listesinde takimi gostersin.
+        assertThat(service.sonBelgeler(List.of(1L), 10, null))
+                .allSatisfy(o -> assertThat(o.teamName()).isEqualTo("RPA Takımı"));
+    }
+
+    @Test
+    @DisplayName("şapkalı sesli aranırken katlanır ama Türkçe harfler katlanmaz")
+    void sapkaliSesliKatlanir() {
+        MailerDocument belge = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "İş Zekâsı Raporu", SICIL));
+        assertThat(belge.id()).isNotNull();
+
+        // Kayitli ad sapkali (â), kullanici sapkasiz yaziyor - klavyede
+        // sapkali a yok denecek kadar az kullaniliyor.
+        assertThat(service.sonBelgeler(List.of(1L), 10, "zekası")).hasSize(1);
+        assertThat(service.sonBelgeler(List.of(1L), 10, "zekâsı")).hasSize(1);
+
+        // AMA ı/ş/ğ/ü/ö/ç KATLANMAZ - Turkce'de ayri harfler.
+        // "is" yazan biri "İş"i bulmamali, baska kelime.
+        assertThat(service.sonBelgeler(List.of(1L), 10, "is zekasi")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("arama Türkçe büyük/küçük harf kurallarını kullanır")
+    void aramaTurkceHarfKurallari() {
+        MailerDocument belge = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "İZMİR Sahası Sprinti", SICIL));
+        assertThat(belge.id()).isNotNull();
+
+        // Varsayilan locale'de "İZMİR".toLowerCase() -> "i̇zmir" (i + birlesik
+        // nokta) olur ve kullanicinin yazdigi "izmir" ile ESLESMEZ.
+        assertThat(service.sonBelgeler(List.of(1L), 10, "izmir")).hasSize(1);
+        assertThat(service.sonBelgeler(List.of(1L), 10, "İZMİR")).hasSize(1);
     }
 
     @Test
@@ -174,7 +258,7 @@ class MailerDocumentServiceTest {
         service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
                 1L, TemplateType.KAPANIS, "Bir", SICIL));
 
-        assertThat(service.sonBelgeler(List.of(), 10)).isEmpty();
+        assertThat(service.sonBelgeler(List.of(), 10, null)).isEmpty();
     }
 
     @Test

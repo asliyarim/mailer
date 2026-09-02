@@ -60,10 +60,15 @@ export default function SutunSecimi({ templateType, columns, onChange }) {
         </div>
       )}
 
-      {sektoreGoreGruplu && (
+      {/* Sektör artık varsayılan KAPALI geliyor. Açmak yalnızca bir sütun
+          eklemiyor, tablonun DÜZENİNİ değiştiriyor - kullanıcı bunu tıklamadan
+          önce bilsin. Eskiden açıktı ve sütun çizilmediği için insanlar
+          davranışı gördükleri bir şeye bağlayamıyordu. */}
+      {templateType === 'KAPANIS' && (
         <p className="alan__ipucu" style={{ marginTop: 8 }}>
-          Sektör seçili: tablo sektöre göre gruplanır. Grup başlığı zaten sektörü
-          söylediği için ayrı bir sütun olarak çizilmez.
+          {sektoreGoreGruplu
+            ? 'Sektör seçili: tablo sektöre göre gruplanır. Grup başlığı zaten sektörü söylediği için ayrı bir sütun olarak çizilmez.'
+            : 'Sektörü açarsanız tablo sektöre göre gruplanır — sütun olarak değil, grup başlığı olarak çizilir.'}
         </p>
       )}
 

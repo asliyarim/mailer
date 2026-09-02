@@ -31,7 +31,7 @@ kod() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 alan() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
   const o=JSON.parse(s);console.log(process.argv[1].split(".").reduce((a,k)=>a?.[k],o));})' "$1"; }
 
-for TIP in KAPANIS PLANLAMA YONETICI_OZETI; do
+for TIP in KAPANIS PLANLAMA YONETICI_OZETI TOPLANTI_CIKTILARI; do
   echo
   echo "═══ $TIP ═══"
 
@@ -43,7 +43,9 @@ for TIP in KAPANIS PLANLAMA YONETICI_OZETI; do
   printf '%s' "$BELGE" > "$G/belge.json"
   ID="$(alan id < "$G/belge.json")"
   case "$TIP" in
-    YONETICI_OZETI) BEKLENEN_BASLIK="RPA SPRINT YÖNETİCİ ÖZETİ" ;;
+    YONETICI_OZETI)     BEKLENEN_BASLIK="RPA SPRINT YÖNETİCİ ÖZETİ" ;;
+    # Takimlar ustu: basliga takim adi konmaz.
+    TOPLANTI_CIKTILARI) BEKLENEN_BASLIK="TOPLANTI ÇIKTILARI VE ALINAN KARARLAR" ;;
     *)              BEKLENEN_BASLIK="RPA SPRINT BİLGİLENDİRME" ;;
   esac
   kontrol "belge dogar" 1 "$(alan currentVersion < "$G/belge.json")"
@@ -94,7 +96,7 @@ let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
   curl -s -b "$CEREZ" "$TABAN/api/mailer/documents/$ID/export.eml" > "$G/mail.eml"
   kontrol "eml uretilir" "var" \
     "$(grep -q 'X-Unsent: 1' "$G/mail.eml" && echo var || echo yok)"
-  kontrol "eml bes gorsel gomer" 5 "$(grep -c '^Content-ID: <' "$G/mail.eml")"
+  kontrol "eml dort gorsel gomer" 4 "$(grep -c '^Content-ID: <' "$G/mail.eml")"
   EML_HTML="$(node -e '
 const fs=require("fs");const eml=fs.readFileSync(process.argv[1],"utf8");
 const g=eml.split("Content-Transfer-Encoding: base64\r\n\r\n")[1].split("\r\n--")[0].replace(/\r\n/g,"");
@@ -112,8 +114,11 @@ process.stdout.write(Buffer.from(g,"base64").toString("utf8"));' "$G/mail.eml")"
   curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
     -H 'Content-Type: application/json; charset=UTF-8' \
     --data-binary "@$G/dolu-onizle.json" "$TABAN/api/mailer/render/clipboard" > "$G/pano.html"
+  # Pano: editor izi YOK, gorseller MUTLAK ADRESLE (data: URI degil - Outlook
+  # masaustu onu cizmiyor, yapistirilan mailde logo hic gorunmuyordu).
   kontrol "pano temiz ve gorselli" "var" \
-    "$(! grep -q 'data-' "$G/pano.html" && grep -q 'data:image/' "$G/pano.html" && echo var || echo yok)"
+    "$(! grep -q 'data-' "$G/pano.html" && grep -q 'data:image/' "$G/pano.html" \
+       && echo var || echo yok)"
 
   # 7. Uc indirme bicimi de kaydedilir
   for BICIM in EML PDF KOPYALA; do
@@ -125,7 +130,7 @@ done
 
 echo
 echo "═══ Giris sayfasi ═══"
-kontrol "son belgeler uc tipi de gorur" 3 \
+kontrol "son belgeler dort tipi de gorur" 4 \
   "$(curl -s -b "$CEREZ" "$TABAN/api/mailer/documents/recent?limit=50" \
      | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
        const l=JSON.parse(s).filter(d=>d.title.startsWith("[UCTAN UCA]"));

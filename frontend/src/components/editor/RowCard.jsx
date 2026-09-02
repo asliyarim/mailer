@@ -45,7 +45,11 @@ const LISTELI = {
  */
 function secenekler(alan, templateType) {
   if (alan === 'status') {
-    return templateType === TEMPLATE_TYPES.YONETICI_OZETI ? DURUMLAR : null
+    // Yonetici Ozeti ve Toplanti Ciktilari'nda sabit dort durum: mail
+    // sayaci "Tamamlandi" metnine bakiyor, yazim hatasi sayaci bozar.
+    // Sprint Planlama'da ayni ad serbest metin - orada liste dayatmiyoruz.
+    const listeli = [TEMPLATE_TYPES.YONETICI_OZETI, TEMPLATE_TYPES.TOPLANTI_CIKTILARI]
+    return listeli.includes(templateType) ? DURUMLAR : null
   }
   return LISTELI[alan] ?? null
 }

@@ -15,8 +15,13 @@ export default defineConfig({
   // /api/auth/me cagrisi yanlislikla mailer backend'ine gider ve 401 doner.
   server: {
     proxy: {
+      // Ikisi de .env'deki portlarla degistirilebilir. Varsayilanlar
+      // .env.example'daki degerler; portlari degistirdiyseniz (ornegin
+      // Capacity Planner yigini ayaktayken) burayi da soylemeniz gerekir,
+      // yoksa dev sunucusunda oturum surekli duser (bkz. docs/kurulum.md).
+      // URETIMI ETKILEMEZ: orada istekleri Odyssey'in nginx'i proxy'ler.
       '/api/auth': { target: process.env.VITE_AUTH_BASE_URL || 'http://localhost:8081', changeOrigin: true },
-      '/api/mailer': { target: 'http://localhost:8082', changeOrigin: true },
+      '/api/mailer': { target: process.env.VITE_MAILER_BASE_URL || 'http://localhost:8082', changeOrigin: true },
     },
   },
 })

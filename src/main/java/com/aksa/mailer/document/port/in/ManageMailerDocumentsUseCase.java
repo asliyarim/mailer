@@ -26,7 +26,11 @@ public interface ManageMailerDocumentsUseCase {
      * templateType zaten ozetle geliyor ve sunucunun uc ayri liste dondurmesi
      * "son N kayit" anlamini bozardi.
      */
-    List<DocumentSummary> sonBelgeler(List<Long> teamIds, int limit);
+    /**
+     * @param arama bos degilse basligi VE donemi bu metinle suzer
+     *              (buyuk/kucuk harf duyarsiz, Turkce kurallariyla)
+     */
+    List<DocumentSummary> sonBelgeler(List<Long> teamIds, int limit, String arama);
 
     MailerDocument getir(Long id);
 
@@ -58,8 +62,25 @@ public interface ManageMailerDocumentsUseCase {
     record DocumentSummary(
             Long id,
             Long teamId,
+            /**
+             * Takimin adi - "İş Zekâsı Takımı".
+             *
+             * teamId tek basina yetmiyordu: ADMIN butun takimlarin
+             * belgelerini goruyor ve en dogal filtre "hangi takim". Arama
+             * bunu da tariyor. Ad cozulemezse null.
+             */
+            String teamName,
             TemplateType templateType,
             String title,
+            /**
+             * content.header.period - "Ağustos 2026 Sprint Kapanışı" gibi.
+             *
+             * Ozette content TASINMAZ ama BU alan istisna: kullanici
+             * taslaklarini sprint numarasi ve donemle ariyor, o bilgi yalnizca
+             * burada. Tasinmasaydi arama kutusu baslikla sinirli kalirdi.
+             * content zaten yuklu geliyor, ek maliyeti yok.
+             */
+            String period,
             String status,
             int currentVersion,
             String updatedBy,

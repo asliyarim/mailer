@@ -86,7 +86,9 @@ abstract class MailIskeleti implements MailTemplate {
             Map.entry("title", "BAŞLIK"),
             Map.entry("description", "AÇIKLAMA"),
             Map.entry("button", "BUTON"),
-            Map.entry("url", "BAĞLANTI"));
+            Map.entry("url", "BAĞLANTI"),
+            // Toplanti Ciktilari: resmi kararda "hangi alanda" ayri bir bilgi.
+            Map.entry("scope", "KAPSAM / ALAN"));
 
     /** Sutun genislik agirliklari; yuzdeye cevrilir. */
     private static final Map<String, Integer> SUTUN_AGIRLIKLARI = Map.ofEntries(
@@ -116,7 +118,8 @@ abstract class MailIskeleti implements MailTemplate {
             Map.entry("title", 20),
             Map.entry("description", 34),
             Map.entry("button", 16),
-            Map.entry("url", 26));
+            Map.entry("url", 26),
+            Map.entry("scope", 16));
 
     @Override
     public final String uret(MailContent content, MailTheme tema) {
@@ -126,7 +129,15 @@ abstract class MailIskeleti implements MailTemplate {
                 .append("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">")
                 .append("<title>").append(kacir(content.header().title())).append("</title>")
                 .append("</head>")
-                .append("<body style=\"margin:0;padding:0;background:").append(tema.pageBackground()).append("\">");
+                // print-color-adjust: PDF/yazdirma ciktisinda ZEMINLER de
+                // bassin. Varsayilan olarak tarayici arka planlari atiyor ve
+                // renkli bolum seritleri beyaz kagitta gri yaziya donuyordu -
+                // kullanici ekranda bir sey gorup PDF'te baskasini aliyordu.
+                // Ozellik KALITILIYOR, bu yuzden body'de bir kez yeter.
+                // Outlook bilmedigi ozelligi yok sayar; mail etkilenmez.
+                .append("<body style=\"margin:0;padding:0;")
+                .append("-webkit-print-color-adjust:exact;print-color-adjust:exact;background:")
+                .append(tema.pageBackground()).append("\">");
 
         html.append("<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\"")
                 .append(" style=\"background:").append(tema.pageBackground()).append("\"><tr>")
@@ -179,7 +190,9 @@ abstract class MailIskeleti implements MailTemplate {
     // --- hero ---------------------------------------------------------------
 
     private void hero(StringBuilder html, MailContent content, MailTheme tema) {
-        ThemeImage gorsel = tema.hero();
+        // Tema DEGIL sablon seciyor: iki toplanti sablonu butun takimlarda
+        // ayni logoyu kullaniyor (bkz. MailTemplate.heroGorseli).
+        ThemeImage gorsel = heroGorseli(tema);
         html.append("<tr>")
                 .append("<td width=\"").append(HERO_SOL).append("\" height=\"").append(gorsel.height())
                 .append("\" valign=\"middle\" style=\"width:").append(HERO_SOL).append("px;height:")
@@ -188,15 +201,15 @@ abstract class MailIskeleti implements MailTemplate {
                 // nowrap YOK - v2'de vardi ve uzun baslik maskotun altina girip
                 // kirpiliyordu. Satir kaymasi, kirpilmaya yeglenir.
                 .append("<div").append(adres("header.title"))
-                .append(" style=\"font-size:32px;line-height:37px;font-weight:900\">")
-                .append(kacir(content.header().title())).append("</div>")
+                .append(" style=\"font-size:32px;line-height:37px;font-weight:900;color:#ffffff\">")
+                .append(beyaz(kacir(content.header().title()))).append("</div>")
                 .append("<div").append(adres("header.period"))
                 .append(" style=\"font-size:22px;line-height:27px;font-weight:900;color:")
                 .append(tema.heroAccent()).append(";margin-top:6px\">")
-                .append(kacir(content.header().period())).append("</div>")
+                .append(renkli(kacir(content.header().period()), tema.heroAccent())).append("</div>")
                 .append("<div").append(adres("header.teamLabel"))
-                .append(" style=\"font-size:18px;line-height:24px;margin-top:12px\">")
-                .append(kacir(content.header().teamLabel())).append("</div>")
+                .append(" style=\"font-size:18px;line-height:24px;margin-top:12px;color:#ffffff\">")
+                .append(beyaz(kacir(content.header().teamLabel()))).append("</div>")
                 .append("</td>")
                 .append("<td width=\"").append(gorsel.width()).append("\" height=\"").append(gorsel.height())
                 .append("\" style=\"width:").append(gorsel.width()).append("px;height:").append(gorsel.height())
@@ -288,14 +301,15 @@ abstract class MailIskeleti implements MailTemplate {
     // --- bolum basligi ve tablo -----------------------------------------------
 
     protected void bolumBasligi(StringBuilder html, MailSection bolum, MailTheme tema) {
-        html.append("<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\"")
+        html.append("<table role=\"presentation\"").append(bolumIsareti(bolum.key()))
+                .append(" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\"")
                 .append(" style=\"margin-top:16px;border-collapse:collapse\"><tr>")
                 .append("<td").append(adres("sections." + bolum.key() + ".title"))
                 .append(" style=\"height:54px;padding:0 20px;background:")
                 .append(tema.colors(bolum.tone()).sectionHeader())
                 .append(";color:#ffffff;font-family:Arial,sans-serif;font-size:18px;font-weight:900;")
                 .append("vertical-align:middle\">")
-                .append(kacir(bolum.title()))
+                .append(beyaz(kacir(bolum.title())))
                 .append("</td></tr></table>");
     }
 
@@ -312,7 +326,8 @@ abstract class MailIskeleti implements MailTemplate {
                          MailTheme tema, ToneColors renk) {
         List<Integer> yuzdeler = sutunYuzdeleri(sutunlar);
 
-        html.append("<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\"")
+        html.append("<table").append(bolumIsareti(bolumAnahtari))
+                .append(" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\"")
                 .append(" style=\"table-layout:fixed;border-collapse:collapse\">");
         for (int yuzde : yuzdeler) {
             html.append("<col width=\"").append(yuzde).append("%\">");
@@ -391,6 +406,57 @@ abstract class MailIskeleti implements MailTemplate {
         return " data-alan=\"" + kacir(yol) + "\"";
     }
 
+    // --- Outlook'a yapistirma ---------------------------------------------------
+
+    /**
+     * Koyu zemin uzerindeki yaziyi beyaz yapar - METIN DUZEYINDE.
+     *
+     * Rengi kapsayan kutuya (td/div) yazmak EKRANDA yetiyor ama OUTLOOK'A
+     * YAPISTIRINCA yetmiyor: Word'un HTML donusturucusu blok elemanin
+     * rengini kendi varsayilaniyla eziyor ve yazi SIYAH cikiyor. Renkli
+     * kartin uzerinde siyah yazi okunmuyor - yasandi.
+     *
+     * font/span gibi METIN duzeyindeki bir elemanda duran rengi ise
+     * koruyor. O yuzden kutuda da yaziyoruz (ekran icin), burada da
+     * (yapistirma icin) - ikisi birbirini tekrar ediyor gibi gorunse de
+     * farkli iki istemciyi hedefliyorlar.
+     */
+    protected String beyaz(String icerik) {
+        return renkli(icerik, "#ffffff");
+    }
+
+    /**
+     * Gorselin alt metni. Yalnizca BILGI TASIYAN gorsellere yaziliyor.
+     *
+     * Dekoratif olanlar (hero, giris, notlar) bos kaliyor: ekran okuyucunun
+     * onlari okumasi kullaniciya bir sey katmaz, gurultu olur. Logo ise
+     * bilgi tasiyor - cizilemedigi anda hic olmazsa ne oldugu yazsin.
+     */
+    private String altMetni(String cid) {
+        return "logo".equals(cid) ? "Aksa | Kazancı Holding" : "";
+    }
+
+    /**
+     * Rengi UC KEZ yazar ve bu bilerek yapiliyor - her biri baska bir
+     * istemciyi hedefliyor:
+     *
+     *   <font color>   Word'un HTML donusturucusu ESKI etiketi CSS'ten daha
+     *                  guvenilir uyguluyor. Outlook'a yapistirmada belirleyici
+     *                  olan bu - yalnizca CSS ile denendi, yazi siyah kaldi.
+     *   style="color"  tarayici ve modern istemciler icin.
+     *   mso-color-alt  Word'un kendi ozelligi; bazi surumlerde CSS rengini
+     *                  ezerken bunu dinliyor.
+     *
+     * Tekrar gibi gorunuyor ve oyle - ama uc istemcinin ucunde de dogru
+     * renk cikmasinin baska yolu yok.
+     */
+    protected String renkli(String icerik, String renk) {
+        return "<font color=\"" + renk + "\">"
+                + "<span style=\"color:" + renk + ";mso-color-alt:" + renk + "\">"
+                + icerik
+                + "</span></font>";
+    }
+
     /**
      * Degeri KULLANICIDAN degil sablondan gelen sutun.
      *
@@ -419,6 +485,21 @@ abstract class MailIskeleti implements MailTemplate {
     /** data-secenekler="A|B|C". Ayirac dikey cizgi - degerlerde gecmiyor. */
     protected String seceneklerNiteligi(List<String> degerler) {
         return " data-secenekler=\"" + kacir(String.join("|", degerler)) + "\"";
+    }
+
+    /**
+     * "Bu DOM parcasi su bolume ait" isareti. Bolum basliginda ve tablosunda.
+     *
+     * data-alan'dan AYRI olmasinin sebebi: data-alan bir ICERIK YOLUDUR,
+     * "sections.discussed.title" duzenlenecek METNI gosterir. Arayuzun "+
+     * satir ekle" dugmesini konumlandirmak icin ise bolumun ALANINI bilmesi
+     * gerekiyor - baska bir soru, baska bir nitelik.
+     *
+     * Bolum BOS olsa bile baslik cizildigi icin bu isaret hep var: kullanici
+     * hicbir sey doldurmamisken de her basligin altinda satir ekleyebilir.
+     */
+    protected String bolumIsareti(String bolumAnahtari) {
+        return " data-bolum=\"" + kacir(bolumAnahtari) + "\"";
     }
 
     /** Agirliklari yuzdeye cevirir; toplam farki ilk sutuna eklenir. */
@@ -479,13 +560,16 @@ abstract class MailIskeleti implements MailTemplate {
                 .append("<div").append(adres("footer.line1"))
                 .append(" style=\"color:").append(tema.footerAccent())
                 .append(";font-size:17px;font-weight:bold\">")
-                .append(kacir(content.footer() == null ? "" : content.footer().line1())).append("</div>")
+                .append(renkli(kacir(content.footer() == null ? "" : content.footer().line1()), tema.footerAccent())).append("</div>")
                 .append("<div").append(adres("footer.line2"))
-                .append(" style=\"font-size:21px;font-weight:900;margin-top:5px\">")
-                .append(kacir(content.footer() == null ? "" : content.footer().line2())).append("</div>")
+                .append(" style=\"font-size:21px;font-weight:900;margin-top:5px;color:#ffffff\">")
+                .append(beyaz(kacir(content.footer() == null ? "" : content.footer().line2()))).append("</div>")
                 .append("</td>")
-                .append("<td width=\"112\" valign=\"bottom\" align=\"center\">")
-                .append(img(tema.mascot())).append("</td>")
+                // Footer maskotu KALDIRILDI (yonetici istegi): ayni maskot
+                // hero gorselinde zaten var, altta ikinci kez cikmasi tekrar
+                // oluyordu. Gorsel MailTheme.images() listesinden de cikti -
+                // yoksa .eml'e kullanilmayan bir ek olarak gomulur ve Outlook
+                // maili atacli gosterirdi.
                 .append("</tr></table></td></tr>");
     }
 
@@ -501,12 +585,18 @@ abstract class MailIskeleti implements MailTemplate {
      * Outlook style'daki olculeri her zaman dikkate almaz.
      */
     protected String img(ThemeImage gorsel) {
+        // Yukseklik KOSULSUZ yaziliyor. Once "verilmisse yaz" seklindeydi ve
+        // footer logosu yuksekliksiz tanimlandigi icin Outlook'a yapistirilan
+        // mailde HIC CIKMIYORDU - Word height:auto'yu anlamiyor.
         StringBuilder etiket = new StringBuilder("<img src=\"cid:").append(gorsel.cid())
-                .append("\" width=\"").append(gorsel.width()).append("\"");
-        if (gorsel.height() != null) {
-            etiket.append(" height=\"").append(gorsel.height()).append("\"");
-        }
-        etiket.append(" alt=\"\" border=\"0\" style=\"display:block;").append(gorsel.boyutStili()).append("\">");
+                .append("\" width=\"").append(gorsel.width())
+                .append("\" height=\"").append(gorsel.height()).append("\"");
+        // alt BOS BIRAKILMIYOR: gorsel cizilemedigi anda kullanici bos bir
+        // kutu yerine ne oldugunu goruyor. Dekoratif olanlar bos kaliyor -
+        // ekran okuyucu onlari gereksiz yere okumasin.
+        etiket.append(" alt=\"").append(kacir(altMetni(gorsel.cid())))
+                .append("\" border=\"0\" style=\"display:block;")
+                .append(gorsel.boyutStili()).append("\">");
         return etiket.toString();
     }
 }

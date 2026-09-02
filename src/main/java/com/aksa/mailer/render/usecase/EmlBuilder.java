@@ -1,5 +1,7 @@
 package com.aksa.mailer.render.usecase;
 
+import com.aksa.mailer.render.domain.ThemeImage;
+import java.util.List;
 import com.aksa.mailer.render.domain.MailTheme;
 import org.springframework.stereotype.Component;
 
@@ -44,11 +46,15 @@ public class EmlBuilder {
     /**
      * @param html  MailHtmlRenderer'in urettigi HTML - DEGISTIRILMEDEN gomulur
      * @param konu  mail konusu
-     * @param tema  gorsellerin alinacagi tema
+     * @param gorselListesi maile gomulecek gorseller - SABLONUN sectigi hero
+     *                      ile birlikte (bkz. MailTemplate.gorseller)
      */
-    public byte[] uret(String html, String konu, MailTheme tema) {
-        Map<String, byte[]> gorseller = gorselCozucu.gorseller(tema);
-        String sinir = "----=_AksaMailer_" + tema.key() + "_" + Integer.toHexString(html.hashCode());
+    public byte[] uret(String html, String konu, List<ThemeImage> gorselListesi) {
+        Map<String, byte[]> gorseller = gorselCozucu.gorseller(gorselListesi);
+        // Sinir dizesi govdede GECMEYEN benzersiz bir metin olmali; HTML'in
+        // ozeti yeterli. Once tema anahtari da giriyordu, artik tema burada
+        // yok (gorseller liste olarak geliyor).
+        String sinir = "----=_AksaMailer_" + Integer.toHexString(html.hashCode());
 
         StringBuilder eml = new StringBuilder(html.length() * 2);
         eml.append("MIME-Version: 1.0").append(CRLF)

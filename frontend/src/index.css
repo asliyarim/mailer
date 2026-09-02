@@ -107,19 +107,35 @@ textarea {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  /* Bağlantı ama görünümü metin: alt çizgi ve mavi renk istemiyoruz. */
+  color: inherit;
+  text-decoration: none;
+  border-radius: 12px;
+  padding: 2px;
+  transition: background-color 0.12s;
+}
+
+.ust-serit__marka:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Marka işareti: mail zarfı. Emoji değil — kurumsal ekranda emoji ucuz durur
    ve platforma göre farklı çizilir. */
 .ust-serit__isaret {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
   border-radius: 13px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  /* Logonun kendi zemini beyaz - kutu da beyaz olsun ki kenari kesik
+     durmasin. Koyu seritte beyaz rozet gibi oturuyor. */
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.ust-serit__isaret img {
+  display: block;
 }
 
 .ust-serit__ad {
@@ -1085,12 +1101,33 @@ textarea::placeholder {
   color: var(--mavi);
 }
 
-/* Son taslaklar listesindeki tip başlığı. */
+/* "Son taslaklar" başlık satırı: başlık + arama + tümünü gör. */
+.liste-basligi {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+/* Arama kutusu başlığın hemen yanında - listeye ait olduğu belli olsun. */
+.arama-kutusu {
+  flex: 1;
+  min-width: 220px;
+  max-width: 420px;
+  border-radius: 999px;
+  padding: 8px 15px;
+}
+
+/* Son taslaklar listesindeki tip başlığı. Düğme: gruplar kapalı başlıyor,
+   tıklayınca açılıyor. */
 .grup-baslik {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 9px;
   padding: 11px 16px;
+  border: 0;
   border-bottom: 1px solid var(--cizgi);
   border-radius: var(--yuvarlak) var(--yuvarlak) 0 0;
   font-size: 12.5px;
@@ -1099,6 +1136,19 @@ textarea::placeholder {
   text-transform: uppercase;
   color: var(--mavi);
   background: var(--mavi-soluk);
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Kapalıyken altında tablo yok - alt köşeler de yuvarlansın. */
+.grup-baslik--kapali {
+  border-bottom-color: transparent;
+  border-radius: var(--yuvarlak);
+}
+
+.grup-baslik__ok {
+  font-size: 11px;
+  opacity: 0.75;
 }
 
 .grup-baslik--green {
@@ -1125,14 +1175,36 @@ textarea::placeholder {
    olduğu gibi giriyor. Bu yüzden iframe'in dışında, satırın hizasında. */
 .satir-arac {
   position: fixed;
-  z-index: 60;
+  z-index: 55;
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 4px 6px;
+  gap: 1px;
+  padding: 2px 4px;
   background: var(--lacivert);
   border-radius: 999px;
   box-shadow: 0 10px 26px rgba(9, 28, 51, 0.34);
+}
+
+/* Bölümün altındaki "+ satır ekle". Boş bölümde de var - kullanıcı hiçbir
+   şey doldurmamışken de mailin üstünden satır ekleyebilsin. */
+.bolume-ekle {
+  position: fixed;
+  z-index: 55;
+  border: 1px dashed #b6cde8;
+  border-radius: 999px;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--mavi);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+
+.bolume-ekle:hover {
+  background: var(--mavi-soluk);
+  border-color: var(--mavi);
+  border-style: solid;
 }
 
 .satir-arac__no {
@@ -1146,8 +1218,8 @@ textarea::placeholder {
 }
 
 .satir-arac__dugme {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   display: grid;
   place-items: center;
   border: 0;

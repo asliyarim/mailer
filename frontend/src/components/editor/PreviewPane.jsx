@@ -25,13 +25,12 @@ import {
   ALAN_NITELIGI,
   cokSatirliMi,
   satirAdresiMi,
-  satirIndeksi,
-  satirSayisi,
   secenekleriCoz,
   SECENEK_NITELIGI,
+  BOLUM_NITELIGI,
 } from '../../lib/icerikYolu.js'
 import SatirIciDuzenleyici from './SatirIciDuzenleyici.jsx'
-import SatirAraclari from './SatirAraclari.jsx'
+import OnizlemeKatmani from './OnizlemeKatmani.jsx'
 
 // Her tusa basista istek atmamak icin bekleme suresi (docs/BRIEF.md §7).
 const GECIKME_MS = 300
@@ -68,9 +67,10 @@ export default function PreviewPane({
   templateType,
   content,
   hazirlaniyor,
-  onHtml,
+  yenileme,
   onAlanDegisti,
   onSatirIslemi,
+  onBolumeEkle,
 }) {
   const [html, setHtml] = useState('')
   const [hata, setHata] = useState(null)
@@ -78,8 +78,8 @@ export default function PreviewPane({
   const [yukseklik, setYukseklik] = useState(VARSAYILAN_YUKSEKLIK)
   // Acik duzenleme kutusu: { adres, kutu, taslakDeger, secenekler }
   const [duzenlenen, setDuzenlenen] = useState(null)
-  // Secili satir: { adres, kutu } - satir araclari bunun yaninda cizilir.
-  const [seciliSatir, setSeciliSatir] = useState(null)
+  // Mailin ustundeki arac katmani: satir araclari + "+ satir ekle".
+  const [katman, setKatman] = useState({ satirlar: [], bolumler: [] })
   const cerceveRef = useRef(null)
   // Duzenlenen elemanin iframe icindeki dugumu - kaydirmada yeniden olcmek icin.
   const hedefRef = useRef(null)
@@ -120,13 +120,75 @@ export default function PreviewPane({
     return { top: c.top + e.top, left: c.left + e.left, width: e.width, height: e.height }
   }, [])
 
+  /**
+   * Arac katmanini olcer: her satirin dikdortgeni + gorsel komsulari,
+   * her bolumun dikdortgeni.
+   *
+   * KOMSU NEDEN DOM'DAN: Sprint Kapanis satirlari sektore gore gruplaniyor,
+   * yani icerikteki sira ile ekrandaki sira farkli (icerik 0,1,2 -> ekran
+   * 0,2,1). "Bir asagi" icerikte degil EKRANDA bir asagi demek.
+   *
+   * Gruplar ayri tablo DEGIL, baslik satirlariyla ayrilmis bloklar. Bu
+   * yuzden komsu araniyorsa kural su: hemen yanindaki <tr> de veri satiri
+   * ise komsudur, degilse (baslik satiri) grup siniridir. Boylece gruplama
+   * kuralini istemcide tekrarlamiyoruz - yapiyi oldugu gibi okuyoruz.
+   */
+  const katmaniOlc = useCallback(() => {
+    const belge = cerceveRef.current?.contentDocument
+    if (!belge || !onSatirIslemi) return
+
+    function komsuAdres(tr, yon) {
+      const komsu = yon === 'yukari' ? tr.previousElementSibling : tr.nextElementSibling
+      if (!komsu || komsu.tagName !== 'TR') return null
+      const adres = komsu.getAttribute(ALAN_NITELIGI)
+      return adres && satirAdresiMi(adres) ? adres : null
+    }
+
+    // Panelden tasan araclar diger bilesenlerin ustune binmesin.
+    const panel = cerceveRef.current?.closest('.panel--onizleme')
+    const sinir = panel?.getBoundingClientRect()
+    const gorunur = (kutu) =>
+      !sinir || (kutu.top >= sinir.top - 8 && kutu.top <= sinir.bottom - 12)
+
+    const satirlar = []
+    let sira = 0
+    for (const el of belge.querySelectorAll(`[${ALAN_NITELIGI}]`)) {
+      const adres = el.getAttribute(ALAN_NITELIGI)
+      if (!satirAdresiMi(adres)) continue
+      sira += 1
+      const kutu = kutuyuOlc(el)
+      if (!kutu || !gorunur(kutu)) continue
+      satirlar.push({
+        adres,
+        kutu,
+        gorunenSira: sira,
+        yukari: komsuAdres(el, 'yukari'),
+        asagi: komsuAdres(el, 'asagi'),
+      })
+    }
+
+    // Ayni bolum icin iki capa var (baslik seridi ve tablo). Sonuncusunu
+    // aliyoruz: satir varsa tablonun altina, yoksa basligin altina duser.
+    const sonCapa = new Map()
+    for (const el of belge.querySelectorAll(`[${BOLUM_NITELIGI}]`)) {
+      sonCapa.set(el.getAttribute(BOLUM_NITELIGI), el)
+    }
+    const bolumler = []
+    for (const [key, el] of sonCapa) {
+      const kutu = kutuyuOlc(el)
+      if (kutu && gorunur(kutu)) bolumler.push({ key, kutu })
+    }
+
+    setKatman({ satirlar, bolumler })
+  }, [kutuyuOlc, onSatirIslemi])
+
   // --- onizlemeyi getir -----------------------------------------------------
 
   useEffect(() => {
     if (!onizlenebilir) return undefined
     // Duzenleme kutusu acikken YENILEME YOK: iframe yeniden yuklenirse
     // kutunun altindaki eleman kaybolur ve kutu bosluga bakar.
-    if (duzenlenen || seciliSatir) return undefined
+    if (duzenlenen) return undefined
 
     let iptal = false
     setYenileniyor(true)
@@ -136,13 +198,11 @@ export default function PreviewPane({
           if (iptal) return
           setHtml(gelen)
           setHata(null)
-          onHtml?.(gelen)
         })
         .catch((e) => {
           if (iptal) return
           setHata(e.message)
           setHtml('')
-          onHtml?.('')
         })
         .finally(() => {
           if (!iptal) setYenileniyor(false)
@@ -153,12 +213,13 @@ export default function PreviewPane({
       iptal = true
       clearTimeout(zamanlayici)
     }
-  }, [teamId, templateType, content, onHtml, onizlenebilir, duzenlenen, seciliSatir])
+  }, [teamId, templateType, content, onizlenebilir, duzenlenen, yenileme])
 
   // --- tiklama: alani yakala ------------------------------------------------
 
   const cerceveYuklendi = useCallback(() => {
     yuksekligiOlc()
+    katmaniOlc()
 
     const belge = cerceveRef.current?.contentDocument
     if (!belge || !onAlanDegisti) return
@@ -177,18 +238,15 @@ export default function PreviewPane({
       // Bagimsiz sekmeye gitmesin, kart butonu tiklaninca gezinmesin.
       e.preventDefault()
 
+      // SATIRIN KENDISI: <tr> de adresli. Bu adres bir NESNEYI gosterir;
+      // duzenleme kutusu acilirsa "[object Object]" yazar ve kaydedilirse
+      // satirin tamami bir metinle ezilirdi. Satir islemleri, satirin
+      // yanindaki arac cubugundan yapiliyor - tiklama bir sey yapmiyor.
+      if (satirAdresiMi(adres)) return
+
       const kutu = kutuyuOlc(hedef)
       if (!kutu) return
       hedefRef.current = hedef
-
-      // SATIRIN KENDISI: <tr> de adresli. Bu adres bir NESNEYI gosterir;
-      // duzenleme kutusu acilirsa "[object Object]" yazar ve kaydedilirse
-      // satirin tamami bir metinle ezilirdi. Satir adresi araclara gider.
-      if (satirAdresiMi(adres)) {
-        setDuzenlenen(null)
-        setSeciliSatir({ adres, kutu })
-        return
-      }
 
       // Gizli alanlar (karar numarasi) mailde CIZILIRKEN uretiliyor -
       // duzenlenirse yazilan deger bir sonraki cizimde ezilir. Sunucu artik
@@ -201,7 +259,6 @@ export default function PreviewPane({
       const deger = alandanOku(content, adres)
       if (deger !== undefined && typeof deger !== 'string') return
 
-      setSeciliSatir(null)
       setDuzenlenen({
         adres,
         kutu,
@@ -210,41 +267,50 @@ export default function PreviewPane({
         secenekler: secenekleriCoz(hedef.getAttribute(SECENEK_NITELIGI)),
       })
     })
-  }, [yuksekligiOlc, kutuyuOlc, onAlanDegisti, content])
+  }, [yuksekligiOlc, katmaniOlc, kutuyuOlc, onAlanDegisti, content])
 
-  // Panel kaydirilinca kutu/araclar elemanla birlikte gitsin.
+  // Panel kaydirilinca hem duzenleme kutusu hem arac katmani elemanlarla
+  // birlikte gitsin. Kaydirma sik tetikleniyor - olcumu bir sonraki cizim
+  // karesine biraktik, yoksa her piksel icin yeniden olculurdu.
   useEffect(() => {
-    if (!duzenlenen && !seciliSatir) return undefined
+    let bekleyen = 0
     function yenidenKonumla() {
-      const kutu = kutuyuOlc(hedefRef.current)
-      if (!kutu) return
-      setDuzenlenen((o) => (o ? { ...o, kutu } : o))
-      setSeciliSatir((o) => (o ? { ...o, kutu } : o))
+      if (bekleyen) return
+      bekleyen = window.requestAnimationFrame(() => {
+        bekleyen = 0
+        const kutu = kutuyuOlc(hedefRef.current)
+        if (kutu) setDuzenlenen((o) => (o ? { ...o, kutu } : o))
+        katmaniOlc()
+      })
     }
     window.addEventListener('resize', yenidenKonumla)
     window.addEventListener('scroll', yenidenKonumla, true)
     return () => {
+      if (bekleyen) window.cancelAnimationFrame(bekleyen)
       window.removeEventListener('resize', yenidenKonumla)
       window.removeEventListener('scroll', yenidenKonumla, true)
     }
-  }, [duzenlenen, seciliSatir, kutuyuOlc])
+  }, [kutuyuOlc, katmaniOlc])
 
   /**
-   * Satir islemi: ekle / kopyala / yukari / asagi / sil.
+   * Satir islemi: yukari / asagi / ekle / kopyala / sil.
    *
-   * Islemden sonra secim KAPANIYOR: satirlar yer degistirince indeksler
-   * kayiyor ve onizleme yeniden uretiliyor - eski dikdortgene yapisik bir
-   * arac cubugu yanlis satiri gosterirdi.
+   * Yukari-asagi EKRANDAKI komsuyla takas ediliyor (satir.yukari/asagi),
+   * icerikteki komsuyla degil: Kapanis tablosu sektore gore grupladigi icin
+   * ikisi ayni sey degil.
    */
-  function satirIslemiYap(islem) {
-    if (!seciliSatir) return
+  function satirIslemiYap(satir, islem) {
     if (islem === 'sil') {
       const onay = window.confirm('Bu satır silinecek. Devam edilsin mi?')
       if (!onay) return
     }
-    onSatirIslemi?.(seciliSatir.adres, islem)
-    hedefRef.current = null
-    setSeciliSatir(null)
+    if (islem === 'yukari' || islem === 'asagi') {
+      const hedefAdres = islem === 'yukari' ? satir.yukari : satir.asagi
+      if (!hedefAdres) return
+      onSatirIslemi?.(satir.adres, 'takas', hedefAdres)
+      return
+    }
+    onSatirIslemi?.(satir.adres, islem)
   }
 
   function duzenlemeyiBitir() {
@@ -308,16 +374,12 @@ export default function PreviewPane({
         </div>
       )}
 
-      {seciliSatir && (
-        <SatirAraclari
-          kutu={seciliSatir.kutu}
-          index={satirIndeksi(seciliSatir.adres)}
-          toplam={satirSayisi(content, seciliSatir.adres)}
-          onIslem={satirIslemiYap}
-          onKapat={() => {
-            hedefRef.current = null
-            setSeciliSatir(null)
-          }}
+      {onizlenebilir && onSatirIslemi && (
+        <OnizlemeKatmani
+          satirlar={katman.satirlar}
+          bolumler={katman.bolumler}
+          onSatirIslemi={satirIslemiYap}
+          onBolumeEkle={onBolumeEkle}
         />
       )}
 

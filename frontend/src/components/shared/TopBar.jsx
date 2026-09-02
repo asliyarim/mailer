@@ -14,20 +14,26 @@ export default function TopBar({ user, durum, durumUyari }) {
 
   return (
     <header className="ust-serit">
-      <div className="ust-serit__marka">
-        <div className="ust-serit__isaret" aria-hidden="true">
-          {/* Zarf işareti. Emoji değil: platforma göre farklı çizilir ve
-              kurumsal ekranda tutarsız durur. */}
-          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <rect x="2.5" y="4.5" width="19" height="15" rx="2.5" stroke="#fff" strokeWidth="1.7" />
-            <path d="M3.5 6.5 12 13l8.5-6.5" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" />
-          </svg>
+      {/* Marka giriş sayfasına dönüyor - uygulamalarda beklenen davranış bu
+          ve kullanıcı tip seçimine dönmek için başka bir yol aramasın. */}
+      <Link className="ust-serit__marka" to="/" aria-label="Giriş sayfasına dön">
+        {/* Kurumsal logo. Dosya 128px üretildi, 44px'lik kutuda çiziliyor -
+            2x ekranda net kalsın diye. Zemin beyaz: logonun kendi zemini
+            beyaz (saydam değil), koyu şeridin üstünde doğrudan durursa
+            kenarları kirli görünür. */}
+        <div className="ust-serit__isaret">
+          <img
+            src={`${import.meta.env.BASE_URL}aksa-mailler.png`}
+            width="36"
+            height="36"
+            alt=""
+          />
         </div>
         <div>
-          <div className="ust-serit__ad">Aksa Mailer</div>
+          <div className="ust-serit__ad">Aksa Mailler</div>
           <div className="ust-serit__alt">Sprint bilgilendirme maili üretici</div>
         </div>
-      </div>
+      </Link>
 
       <div className="ust-serit__sag">
         {durum && <span className={durumUyari ? 'rozet rozet--uyari' : 'rozet'}>{durum}</span>}

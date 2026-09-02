@@ -1,5 +1,5 @@
 #!/bin/sh
-# Odyssey katalogUNA "Aksa Mailer" kartini EKLER.
+# Odyssey katalogUNA "Aksa Mailler" kartini EKLER.
 #
 # nginx resmi imaji, acilista /docker-entrypoint.d/*.sh dosyalarini calistirir.
 # Bu betik oraya mount edilir (bkz. docker-compose.odyssey.yml) ve kabugun
@@ -34,7 +34,7 @@ fi
 
 cat >> "$KATALOG" <<'JS'
 
-/* --- Aksa Mailer (aksa-mailer deposundan eklendi) --- */
+/* --- Aksa Mailler (aksa-mailer deposundan eklendi) --- */
 ADRESLER["aksa-mailer"] = {
   // Odyssey nginx'i /mailer/ yolunu uygulamanin frontend'ine proxy'ler -
   // ayri bir alan adi KULLANILMAZ, oturum cerezi first-party kalsin diye.
@@ -44,11 +44,11 @@ ADRESLER["aksa-mailer"] = {
 PROJECTS.push({
   id: "aksa-mailer",
   slug: "mailer",
-  name: "Aksa Mailer",
+  name: "Aksa Mailler",
   tagline: "Sprint bilgilendirme maili üretici",
   description:
     "Sprint kapanış, planlama ve yönetici özeti maillerini hazırlar; Outlook'ta bozulmadan açılan .eml dosyası üretir.",
-  status: "dev",
+  status: "live",
   url: adres("aksa-mailer"),
   accent: "teal",
   icon: "spark",

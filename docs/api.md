@@ -124,6 +124,7 @@ Takımın mail listesi — **özet**, `content` dönmez.
     "teamId": 1,
     "templateType": "KAPANIS",
     "title": "Ağustos 2026 Sprint Kapanışı",
+    "period": "Ağustos 2026 Sprint Kapanışı",
     "status": "DRAFT",
     "currentVersion": 3,
     "updatedBy": "10234",
@@ -133,6 +134,12 @@ Takımın mail listesi — **özet**, `content` dönmez.
 ```
 
 En son güncellenen başta. `teamId` zorunlu; eksikse `400`.
+
+> **`period` neden burada?** Özet `content` taşımaz — bu alan **istisna**.
+> Sprint numarası ve dönem yalnızca `content.header.period`'da yaşıyor;
+> taşınmasaydı arama kutusu başlıkla sınırlı kalırdı (§2b). `content` zaten
+> yüklü geldiği için ek maliyeti yok. İçeriği olmayan bir kayıtta `null`
+> gelebilir.
 
 ---
 
@@ -147,7 +154,7 @@ Yeni taslak. **Tipin ve temanın varsayılan içeriğiyle doğar** — istemci b
 { "teamId": 1, "templateType": "KAPANIS", "title": "Ağustos 2026 Sprint Kapanışı" }
 ```
 
-`templateType`: `KAPANIS` | `PLANLAMA` | `YONETICI_OZETI`
+`templateType`: `KAPANIS` | `PLANLAMA` | `YONETICI_OZETI` | `TOPLANTI_CIKTILARI`
 
 **Yanıt `201`** — 4. uçtaki tam belge gövdesi. `currentVersion` = 1.
 
@@ -184,10 +191,26 @@ Giriş sayfasındaki **"Son Taslaklarım"**. Kullanıcının erişebildiği **b�
 takımların belgeleri, en yeni önce.
 
 ```
-GET /api/mailer/documents/recent?limit=12
+GET /api/mailer/documents/recent?limit=12&q=sprint%2042
 ```
 
 **Yanıt `200`** — §2'dekiyle aynı özet dizisi.
+
+### `q` — arama
+
+Boş değilse **başlıkta veya dönemde** geçenleri süzer. Büyük/küçük harf
+duyarsız, **Türkçe kurallarıyla**: `izmir` yazınca `İZMİR` bulunur.
+Varsayılan locale kullanılsaydı bulunmazdı — `"İ".toLowerCase()` Latin `i`
+vermiyor.
+
+Boş veya yalnızca boşluk olan `q` süzmez.
+
+> **Arama son 500 kaydı tarar**, gösterilen 12'yi değil — kullanıcı listede
+> görünmeyen eski bir sprinti de bulabilsin diye. Ama 500'den eskisi çıkmaz:
+> her tuşta bütün tabloyu `jsonb` içeriğiyle yüklememek için bilerek verilmiş
+> bir sınır. Arayüz "bulunamadı" derken bunu ima etmeli.
+
+**İstemci ikinci bir filtre yazmamalı** — iki arama mantığı zamanla ayrışır.
 
 `teamId` **parametre değil**: oturumun kendi takımlarından türetilir. Yetkisiz
 bir takım istenemez çünkü istenecek alan yok. `ADMIN` bütün aktif takımları
@@ -407,7 +430,30 @@ işareti değil yalnızca yazı sarılır).
 ```
 
 Satır ekleme / silme / sıralama düğmelerini bunun üzerine konumlandırmak
-için. İstemci hücrelerden ön ek çıkarmak zorunda kalmasın.
+için. İstemci hücrelerden ön ek çıkarmak zorunda kalmasın. Yönetici
+Özeti'nin bağlantı kartlarında aynı adres kartın `<td>`'sinde durur.
+
+**Bölümün alanı ayrı bir nitelikle işaretlenir:**
+
+```html
+<table data-bolum="discussed">   <!-- bölüm başlığı şeridi -->
+<table data-bolum="discussed">   <!-- bölümün tablosu, satır varsa -->
+```
+
+`data-alan` bir **içerik yoludur** — `sections.discussed.title` düzenlenecek
+metni gösterir. `data-bolum` ise "bu DOM parçası şu bölüme ait" der; başka
+soru, başka nitelik.
+
+**Bölüm boş olsa bile başlık çizilir, yani çapa her zaman vardır.** Kullanıcı
+hiçbir şey doldurmamışken de her başlığın altında satır ekleyebilsin diye.
+
+> **Sprint Kapanış'ta sıralama tuzağı.** Kapanış satırları sektöre göre
+> gruplanır; içerikteki sıra ile ekrandaki sıra aynı değildir.
+> `[0]=Elektrik, [1]=Holding, [2]=Elektrik` içeriği ekranda
+> `Elektrik: 0, 2` ve `Holding: 1` diye çizilir. Kullanıcı üstteki satırı
+> "aşağı" taşırsa ve istemci dizide `0` ile `1`'i takas ederse satır başka
+> bir gruba atlar veya hiç kıpırdamaz. Planlama ve Yönetici Özeti'nde
+> gruplama yoktur, orada düz takas doğrudur.
 
 **Üretilen sütun adres taşımaz.** Değeri kullanıcıdan değil şablondan gelen
 bir sütun düzenlenebilir görünmemeli: içerikte karşılığı boş olduğu için
@@ -437,13 +483,26 @@ içerebilir.
 
 ## 8b. `POST /api/mailer/render/clipboard`
 
-**"Outlook İçin Kopyala"** — panoya konacak HTML. Gövde §8 ile aynı.
+**Editör izi taşımayan mail HTML'i.** Gövde §8 ile aynı.
 
 **Yanıt `200`**, `text/html`.
 
-Önizlemeden **tek farkı** düzenleme niteliklerinin soyulmuş olması: kullanıcı
-bunu Outlook taslağına yapıştıracak, editör için var olan nitelikler oraya
-taşınmasın.
+Önizlemeden **tek farkı** düzenleme niteliklerinin soyulmuş olması.
+
+**İki yerde kullanılıyor:**
+
+| Kullanım | Neden bu uç |
+|---|---|
+| "Outlook İçin Kopyala" | Kullanıcı Outlook taslağına yapıştıracak; editör nitelikleri oraya taşınmasın |
+| "PDF / Yazdır" | Kâğıda giden şey de editör izi taşımamalı |
+
+> **Adı yanıltıcı, farkındayız.** Uç yalnızca pano için yazılmıştı; yazdırma
+> sonradan buraya bağlandı çünkü ihtiyaç aynıydı. Adını düzeltmek yerine
+> burada anlatmayı seçtik: doğrulanmış iki akışı isim uğruna kırmak,
+> yanlış isimden pahalıya gelirdi.
+
+Böylece `data-*` nitelikleri **yalnızca ekranda** kalıyor: `.eml`'de yok,
+panoda yok, PDF'te yok.
 
 Görseller `data:` URI ile gömülü gelir — `cid:` pano üzerinden çalışmaz, MIME
 kabı yok.
@@ -453,6 +512,41 @@ kabı yok.
 > yapıştırmak istendiğinde. Görseller gelmezse çözüm tema görsellerini
 > kimlik doğrulamasız bir uçtan yayınlayıp mutlak URL'e geçmektir — henüz
 > yapılmadı, çünkü yeni bir açık uç sessizce eklenmez.
+
+---
+
+## 8c. `POST /api/mailer/render/pdf`
+
+**"PDF İndir"** — dosya doğrudan iner, **yazdırma penceresi açılmaz**.
+Gövde §8 ile aynı.
+
+**Yanıt `200`**, `application/pdf`, `Content-Disposition: attachment`.
+Dosya adı başlıktan üretilir ve ASCII'ye indirgenir (`.eml`'deki mantık).
+
+Kayıtlı sürümden değil **ekrandaki içerikten** üretilir — pano ve önizleme
+de öyle çalışıyor; kullanıcı PDF'i genelde kaydetmeden alıyor.
+
+> **Neden sunucuda üretiliyor:** istemcide (jsPDF/html2canvas) üretmek maili
+> ekran görüntüsü gibi **rasterize eder** — yazılar bulanıklaşır, tablolar
+> bozulur, dosya şişer. Daha önemlisi mailin **ikinci bir çizimi** olurdu ve
+> zamanla asıl maille ayrışırdı (Mimari Kural 1). Burada kaynak yine
+> `MailHtmlRenderer`'ın ürettiği tek HTML.
+
+### Yazı tipi neden gömülüyor
+
+PDF'in yerleşik (base-14) fontları **Türkçe'ye özgü harfleri taşımıyor** —
+`ş ğ ı İ` yerine boş kutu çıkar. Arial'in lisansı gömmeye izin vermiyor.
+
+Droid Sans (Apache 2.0) gömülüyor ve `Arial`, `Segoe UI`, `Helvetica`,
+`sans-serif` **adlarıyla** kaydediliyor; böylece şablon HTML'ine hiç
+dokunulmadan doğru yazı tipi kullanılıyor. Ayrıntı:
+`src/main/resources/fonts/LISANS.txt`.
+
+Görseller `cid:` ile geliyor ve PDF üreticisi onları dosya baytlarına
+çeviriyor — `.eml`'de çalışan `cid:` burada bir anlam ifade etmezdi.
+
+> **İlk istek yavaştır:** yazı tipi diske çıkarılıyor ve PDF motoru ısınıyor.
+> Sonraki istekler hızlı. Arayüz bir "Hazırlanıyor…" durumu göstermeli.
 
 ---
 
@@ -520,7 +614,10 @@ Tam açıklama: [`BRIEF.md` §6](BRIEF.md). Burada bağlayıcı olan kısım:
 {
   "schemaVersion": 1,
   "header":  { "title": "…", "period": "…", "teamLabel": "…" },
-  "meeting": { "date": "03.09.2026", "time": "10:00", "place": "…" },
+  "meeting": {
+    "date": "03.09.2026", "time": "10:00", "place": "…",
+    "title": "…", "moderator": "…", "attendees": "…"
+  },
   "intro":   ["…", "…", "…"],
   "sections": [
     {
@@ -636,6 +733,55 @@ ve kullanıcı bunu hata sanar.
 `status` bu tipte dört sabit değer alır: `Bekliyor`, `Devam Ediyor`,
 `Karar Bekliyor`, `Tamamlandı`. **Sprint Planlama'da aynı alan serbest
 metindir** — orada ortak liste dayatmak veri kaybettirirdi.
+
+**Toplantı Çıktıları**
+
+Sprint dışı toplantılar için. Yönetici Özeti'yle örtüşüyor ama **ayrı
+duruyor**: Yönetici Özeti bir takımın **sprint'ine** bağlı, bu ise
+**herhangi bir toplantıya** ve takımlar üstü. Birleştirilseydi her iki
+durumda da yarısı boş kalan bir form çıkardı.
+
+| `key` | Başlık | Ton | Sütunlar |
+|---|---|---|---|
+| `discussed` | 1. KONUŞULAN VE DEĞERLENDİRİLEN KONULAR | `blue` | `team`, `topic`, `detail` |
+| `decisions` | 2. TOPLANTIDA ALINAN RESMİ KARARLAR | `green` | `no`, `decision`, `scope`, `team` |
+| `actions` | 3. BEKLENEN AKSİYONLAR VE SORUMLULAR | `orange` | `team`, `pending`, `owner`, `due`, `status` |
+
+Bölüm başlıkları **numaralı** ve numarayı **içerik taşır** (şablon üretmez) —
+kullanıcı başlığı değiştirebilsin diye. Bu mail bir tutanak gibi okunuyor.
+
+Yönetici Özeti'nden **üç farkı**:
+
+**1. `scope` sütunu** (`KAPSAM / ALAN`). Resmi bir karar kaydında "hangi
+alanda karar alındı" ayrı bir bilgi — Mimari, Kapsam, Tasarım…
+
+**2. Toplantı kutusu.** `meeting` üç yeni alan taşır:
+
+| Alan | Ne |
+|---|---|
+| `meeting.title` | Toplantının adı |
+| `meeting.moderator` | Moderatör / not alan |
+| `meeting.attendees` | Katılımcı ekipler / paydaşlar |
+
+Üçü de düzenleme adresi taşır. **Hiçbiri dolu değilse kutu çizilmez** — boş
+etiketlerle dolu bir kutu mailin en üstünde "burası eksik" derdi, ve yeni
+belge tam da bu hâlde doğar. Kullanıcı bunları sol panelden doldurur.
+
+> **Şema sürümü değişmedi.** Gövde `jsonb`; eski kayıtlarda bu alanlar yok
+> ve `null` okunuyor. Diğer üç tip onları taşıyabilir ama göstermez.
+
+**3. Bağlantı kartları yok.** Bu mail bir tutanak; erişim bağlantıları
+Yönetici Özeti'ne ait.
+
+Sayaçlar: `GÖRÜŞÜLEN KONU`, `ALINAN KARAR`, `AÇIK AKSİYON`, `İLGİLİ EKİP`.
+
+> **`İLGİLİ EKİP` üç bölümü de tarar**, yalnızca görüşülen konuları değil:
+> bir ekip hiç konu açmadan karar veya aksiyon almış olabilir, o da
+> toplantıya dahildir.
+
+Başlık türetmesinde **takım adı kullanılmaz**: `TOPLANTI ÇIKTILARI VE ALINAN
+KARARLAR`. Tip takımlar üstü — sprint dışı bir toplantının çıktısı bir
+takımın adıyla başlamaz. Belge yine bir takıma aittir (yetki için).
 
 > **Neden bazı alanlar varsayılan kapalı:** mail gövdesi 760 piksel sabit
 > (Outlook yüzde genişlikli iç içe kutuyu bozar). Altı sütundan fazlası

@@ -10,19 +10,19 @@ package com.aksa.mailer.render.domain;
  * width/height HTML'e ACIKCA yazilir. Outlook, olculeri verilmeyen gorseli
  * dogal boyutunda cizer; dosya gosterilecek olcuden buyukse mail dagilir.
  *
- * @param height null ise yalnizca genislik yazilir, yukseklik oranla belirlenir
- *               (footer logosu boyle).
+ * YUKSEKLIK ZORUNLU. Once "yalnizca genislik ver, yukseklik oranla belirlensin"
+ * diye bir kisayol vardi ve footer logosu ondan geciyordu; sonucu su oldu:
+ * Outlook'a YAPISTIRILAN mailde o logo HIC CIKMADI. Word'un donusturucusu
+ * height:auto'yu anlamiyor ve yuksekligi verilmemis gorseli yerlestiremiyor.
+ * Diger uc gorsel olculu oldugu icin cikiyordu - fark yalnizca buydu.
+ *
+ * Kisayol kurucu bu yuzden KALDIRILDI: bir daha kimse yanlislikla yuksekliksiz
+ * gorsel tanimlayamasin.
  */
-public record ThemeImage(String cid, String resourcePath, int width, Integer height) {
-
-    public ThemeImage(String cid, String resourcePath, int width) {
-        this(cid, resourcePath, width, null);
-    }
+public record ThemeImage(String cid, String resourcePath, int width, int height) {
 
     /** style icine giren olcu bildirimi - Outlook her ikisini de gormeli. */
     public String boyutStili() {
-        return height != null
-                ? "width:%dpx;height:%dpx".formatted(width, height)
-                : "width:%dpx;height:auto".formatted(width);
+        return "width:%dpx;height:%dpx".formatted(width, height);
     }
 }

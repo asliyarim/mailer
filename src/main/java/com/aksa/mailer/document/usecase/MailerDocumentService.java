@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Belge is mantigi. JPA veya HTTP sinifi import ETMEZ.
@@ -50,29 +53,114 @@ public class MailerDocumentService implements ManageMailerDocumentsUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<DocumentSummary> takimBelgeleri(Long teamId) {
+        Map<Long, String> adlar = takimAdlari(List.of(teamId));
         return documentRepository.takimBelgeleri(teamId).stream()
-                .map(MailerDocumentService::ozet)
+                .map(d -> ozet(d, adlar))
                 .toList();
     }
 
-    private static DocumentSummary ozet(MailerDocument d) {
+    /**
+     * teamId -> takim adi. TEK sorguda cozuluyor.
+     *
+     * Her belge icin ayri ayri takim sorulsaydi elli belgelik bir listede
+     * elli sorgu olurdu; takim sayisi zaten sekiz.
+     */
+    private Map<Long, String> takimAdlari(List<Long> teamIds) {
+        if (teamIds.isEmpty()) {
+            return Map.of();
+        }
+        return teams.erisilebilirTakimlar(false, teamIds).stream()
+                .collect(Collectors.toMap(MailTeam::id, MailTeam::name));
+    }
+
+    private static DocumentSummary ozet(MailerDocument d, Map<Long, String> takimAdlari) {
+        // Donem icerikten okunuyor; icerik veya header bos olabilir.
+        String period = d.content() == null || d.content().header() == null
+                ? null
+                : d.content().header().period();
         return new DocumentSummary(
-                d.id(), d.teamId(), d.templateType(), d.title(),
+                d.id(), d.teamId(), takimAdlari.get(d.teamId()),
+                d.templateType(), d.title(), period,
                 d.status().name(), d.currentVersion(), d.updatedBy(), d.updatedAt());
     }
 
     /** Giris sayfasi bir ekrana bu kadarini sigdirabiliyor. */
     private static final int EN_FAZLA_SON_BELGE = 50;
 
+    /**
+     * Arama yapilirken kac kaydin taranacagi.
+     *
+     * Arama kutusunun isi son 50 taslakla sinirli kalmamak: kullanici eski bir
+     * sprinti arayabilmeli. Ama sinirsiz da olamaz - her tuşta butun tabloyu
+     * jsonb icerigiyle birlikte yuklemek olur. Bu pencere disinda kalan cok
+     * eski bir taslak aramada CIKMAZ; bilinerek verilmis bir sinir.
+     */
+    private static final int ARAMA_PENCERESI = 500;
+
+    private static final Locale TURKCE = Locale.forLanguageTag("tr");
+
     @Override
     @Transactional(readOnly = true)
-    public List<DocumentSummary> sonBelgeler(List<Long> teamIds, int limit) {
+    public List<DocumentSummary> sonBelgeler(List<Long> teamIds, int limit, String arama) {
         // Ust sinir SUNUCUDA: istemci limit=100000 yollayip butun tabloyu
         // cekemesin. Alt sinir da var - limit=0 sessizce bos liste dondururdu.
         int sinir = Math.max(1, Math.min(limit, EN_FAZLA_SON_BELGE));
-        return documentRepository.sonBelgeler(teamIds, sinir).stream()
-                .map(MailerDocumentService::ozet)
+
+        Map<Long, String> adlar = takimAdlari(teamIds);
+        // Arananı da AYNI sadelestirmeden gecir - yoksa kullanici sapkali
+        // yazdiginda bu sefer o eslesmezdi.
+        String aranan = arama == null ? "" : sadelestir(arama.trim());
+
+        if (aranan.isEmpty()) {
+            return documentRepository.sonBelgeler(teamIds, sinir).stream()
+                    .map(d -> ozet(d, adlar))
+                    .toList();
+        }
+
+        return documentRepository.sonBelgeler(teamIds, ARAMA_PENCERESI).stream()
+                .map(d -> ozet(d, adlar))
+                .filter(o -> eslesiyor(o, aranan))
+                .limit(sinir)
                 .toList();
+    }
+
+    /**
+     * Baslikta, donemde VEYA TAKIM ADINDA geciyor mu.
+     *
+     * Takim adi sonradan eklendi: ADMIN butun takimlarin belgelerini goruyor
+     * ve "iş" yazip İş Zekâsı'nin belgelerini suzmek en dogal beklenti.
+     * Once yalnizca baslik ve donem taraniyordu, o yuzden hicbir sey
+     * bulunmuyordu.
+     *
+     * Kucuk harfe cevirim TURKCE kurallariyla: varsayilan locale'de "İŞ"
+     * -> "i̇ş" olur ve kullanicinin yazdigi "iş" ile eslesmez.
+     */
+    private static boolean eslesiyor(DocumentSummary ozet, String aranan) {
+        return icerir(ozet.title(), aranan)
+                || icerir(ozet.period(), aranan)
+                || icerir(ozet.teamName(), aranan);
+    }
+
+    private static boolean icerir(String deger, String aranan) {
+        return deger != null && sadelestir(deger).contains(aranan);
+    }
+
+    /**
+     * Aramaya hazirlar: Turkce kucuk harf + SAPKALI sesli katlama.
+     *
+     * Sapka meselesi: takimin kayitli adi "İş Zekâsı Takımı" (â ile) ama
+     * kullanici "İş Zekası" yaziyor - klavyede sapkali a yok denecek kadar
+     * az kullaniliyor. Katlamasaydik hicbir sey bulunmuyordu.
+     *
+     * YALNIZCA sapkali sesliler katlaniyor (â î û). ı, ş, ğ, ü, ö, ç
+     * Turkce'de AYRI HARFLERDIR ve katlanmaz: "is" yazan biri "İş"i
+     * bulmamali, baska kelime.
+     */
+    private static String sadelestir(String deger) {
+        return deger.toLowerCase(TURKCE)
+                .replace('â', 'a')
+                .replace('î', 'i')
+                .replace('û', 'u');
     }
 
     @Override

@@ -11,12 +11,14 @@ export const TEMPLATE_TYPES = {
   KAPANIS: "KAPANIS",
   PLANLAMA: "PLANLAMA",
   YONETICI_OZETI: "YONETICI_OZETI",
+  TOPLANTI_CIKTILARI: "TOPLANTI_CIKTILARI",
 };
 
 export const TEMPLATE_LABELS = {
   KAPANIS: "Sprint Kapanış",
   PLANLAMA: "Sprint Planlama",
   YONETICI_OZETI: "Yönetici Özeti",
+  TOPLANTI_CIKTILARI: "Toplantı Çıktıları",
 };
 
 /**
@@ -46,6 +48,8 @@ export const ROW_FIELDS = [
   // Yönetici Özeti
   "team", "topic", "detail", "no", "decision", "pending", "owner", "due",
   "linkType", "title", "description", "button", "url",
+  // Toplantı Çıktıları
+  "scope",
 ];
 
 export const ROW_FIELD_LABELS = {
@@ -76,6 +80,7 @@ export const ROW_FIELD_LABELS = {
   description: "Açıklama",
   button: "Buton Metni",
   url: "Adres (URL)",
+  scope: "Kapsam / Alan",
 };
 
 /**
@@ -134,6 +139,7 @@ export const VARSAYILAN_SUTUNLAR = {
   // Buradaki liste yalnızca kullanıcı elle yeni bölüm eklerse kullanılır;
   // sunucudan gelen bölümler kendi sütunlarıyla doğuyor.
   YONETICI_OZETI: ["team", "topic", "detail"],
+  TOPLANTI_CIKTILARI: ["team", "topic", "detail"],
 };
 
 export function emptyRow() {
@@ -150,7 +156,9 @@ export function emptyContent() {
   return {
     schemaVersion: SCHEMA_VERSION,
     header: { title: "", period: "", teamLabel: "" },
-    meeting: { date: "", time: "", place: "" },
+    // title / moderator / attendees Toplanti Ciktilari ile geldi; eski
+    // kayitlarda yoklar ve null okunurlar - sema surumu degismedi.
+    meeting: { date: "", time: "", place: "", title: "", moderator: "", attendees: "" },
     intro: ["", "", ""],
     sections: [],
     notes: [],

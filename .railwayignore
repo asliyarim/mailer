@@ -1,0 +1,15 @@
+target
+frontend/node_modules
+frontend/dist
+.git
+.idea
+*.log
+# Railway CLI (railway up) bu dizini TARBALL yapip yukluyor. Docker build
+# baglami degil, YUKLEMENIN kendisi - .dockerignore burada gecerli DEGIL.
+#
+# Sirlar tarball'a HIC girmemeli: .env icinde APP_JWT_SECRET ve
+# veritabani parolalari var. Backend Dockerfile'i zaten sadece
+# mvnw/pom.xml/.mvn/src kopyaliyor, ama acikca disarida birakiliyor.
+.env
+.env.*
+!.env.example

@@ -35,7 +35,7 @@ class OnizlemeGorselleriTest {
         MailHtmlRenderer renderer = new MailHtmlRenderer(List.of(new KapanisTemplate()));
         tema = ThemeRegistry.tema(RpaTheme.KEY);
         mailHtml = renderer.uret(OrnekIcerik.kapanis(), TemplateType.KAPANIS, RpaTheme.KEY);
-        onizlemeHtml = new OnizlemeGorselleri(new CidImageResolver()).gomulu(mailHtml, tema);
+        onizlemeHtml = new OnizlemeGorselleri(new CidImageResolver()).gomulu(mailHtml, renderer.gorseller(TemplateType.KAPANIS, RpaTheme.KEY));
     }
 
     @Test
@@ -48,11 +48,13 @@ class OnizlemeGorselleriTest {
     }
 
     @Test
-    @DisplayName("Temanin bes gorseli de gomulur")
-    void besGorsel() {
-        assertThat(tema.images()).hasSize(5);
+    @DisplayName("Temanin dort gorseli de gomulur")
+    void dortGorsel() {
+        // Maskot cikarildi: mailde gecmiyor, .eml'e de gomulmemeli -
+        // yoksa kullanilmayan bir ek olur ve Outlook maili atacli gosterir.
+        assertThat(tema.images()).hasSize(4);
         int gomulen = onizlemeHtml.split("src=\"data:image/", -1).length - 1;
-        assertThat(gomulen).isEqualTo(5);
+        assertThat(gomulen).isEqualTo(4);
     }
 
     @Test
