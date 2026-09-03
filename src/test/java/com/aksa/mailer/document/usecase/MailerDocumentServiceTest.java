@@ -201,6 +201,45 @@ class MailerDocumentServiceTest {
     }
 
     @Test
+    @DisplayName("takım listesi q ile süzülür - başlık ve dönem")
+    void takimBelgeleriAramaylaSuzulur() {
+        MailerDocument belge = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "Ağustos Kapanışı", SICIL));
+        MailContent icerik = new MailContent(
+                1,
+                new MailContent.Header("Başlık", "Sprint 42 · Eylül 2026", "RPA Takımı"),
+                belge.content().meeting(), belge.content().intro(),
+                belge.content().sections(), belge.content().notes(), belge.content().footer());
+        service.kaydet(new ManageMailerDocumentsUseCase.SaveDocumentCommand(
+                belge.id(), "Ağustos Kapanışı", null, icerik, 1, SICIL));
+        service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.PLANLAMA, "Mart Planlaması", SICIL));
+
+        // Bos/null suzmez - kutu temizlenince liste geri gelir.
+        assertThat(service.takimBelgeleri(1L, null)).hasSize(2);
+        assertThat(service.takimBelgeleri(1L, "   ")).hasSize(2);
+
+        // Baslikla
+        assertThat(service.takimBelgeleri(1L, "ağustos")).hasSize(1);
+        assertThat(service.takimBelgeleri(1L, "mart")).hasSize(1);
+        // Donemle - sonBelgeler ile AYNI davranis
+        assertThat(service.takimBelgeleri(1L, "Sprint 42")).hasSize(1);
+        // Turkce kucuk harf ve sapkali katlama da ayni
+        assertThat(service.takimBelgeleri(1L, "AĞUSTOS")).hasSize(1);
+        // Eslesmeyen
+        assertThat(service.takimBelgeleri(1L, "kasım")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("takım listesinde TAKIM ADI aranmaz - hiçbir şeyi süzmeyen filtre olurdu")
+    void takimBelgeleriTakimAdiniAramaz() {
+        yeniKapanis();
+        // Takim ZATEN secili: butun satirlar "RPA Takımı". Takim adi da
+        // taransaydi bu arama listeyi oldugu gibi dondururdu.
+        assertThat(service.takimBelgeleri(1L, "RPA")).isEmpty();
+    }
+
+    @Test
     @DisplayName("arama TAKIM ADIYLA da süzer - admin'in en doğal filtresi")
     void aramaTakimAdiylaSuzer() {
         service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(

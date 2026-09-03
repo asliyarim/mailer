@@ -105,8 +105,29 @@ public class PdfUretici {
      * &lt;br&gt;, &lt;col&gt;. openhtmltopdf ise XML bekliyor ve bunlarda
      * patliyor. jsoup araya girip duzgun bir DOM kuruyor.
      */
+    /**
+     * Sayfa kutusu. Mail govdesi 760px SABIT (MailIskeleti.GOVDE_GENISLIK) ve
+     * govde <td align="center"> icinde ortali duruyor.
+     *
+     * @page verilmezse openhtmltopdf her yandan 0.5 inc (36pt) birakiyor:
+     * A4'un 595.275pt genisliginden geriye 523.275pt = 698px kaliyor. 760px'lik
+     * govde oraya sigmiyor, 62px tasiyor ve ORTALI oldugu icin tasma ikiye
+     * bolunup HER IKI YANDAN ~31px kirpiliyor. (Uretilen PDF'in kirpma yolu
+     * olculdu: x ekseninde 36 -> 559.275pt.)
+     *
+     * 10pt yan bosluk: 595.275 - 20 = 575.275pt = 767px. 760px sigiyor,
+     * 7px pay kaliyor. Daha genis bosluk birakilamaz - govde genisligi
+     * Outlook kurali geregi sabit, kucultulemez (Mimari Kural 2).
+     *
+     * Kural YALNIZCA PDF yolunda: paylasilan mail HTML'ine eklenmiyor, yani
+     * onizleme/.eml arasindaki iki farkli nokta artmiyor (Mimari Kural 1).
+     */
+    private static final String SAYFA_KURALI =
+            "@page { size: A4; margin: 24pt 10pt; }";
+
     private org.w3c.dom.Document w3c(String html) {
         Document jsoupBelgesi = Jsoup.parse(html);
+        jsoupBelgesi.head().append("<style>" + SAYFA_KURALI + "</style>");
         jsoupBelgesi.outputSettings().syntax(Document.OutputSettings.Syntax.xml);
         return new W3CDom().fromJsoup(jsoupBelgesi);
     }

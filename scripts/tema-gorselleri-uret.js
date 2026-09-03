@@ -160,9 +160,10 @@ async function logoUret(anahtar, koyu) {
     // takimlarda AYNI, ama ZEMIN takimin rengi kaliyor. Ortak tek dosya
     // uretilseydi bordo bir mailde lacivert panel gorunurdu.
     const hero = await heroUret(anahtar, path.join(LOGO_KLASORU, logoDosyasi), koyu);
-    // Cark logosu kendi icinde bosluklu cizilmis - %108 ile rozeti dolduruyor.
+    // Yeni yonetici logosu halka bicimli ve kareyi zaten dolduruyor:
+    // carkta gereken %108 buyutme burada gerekmiyor (dolgu = 1.0).
     const yonetici = await heroUret(anahtar,
-      path.join(LOGO_KLASORU, 'dijital-carki.jpg'), koyu, 'hero-yonetici.png', 1.08);
+      path.join(LOGO_KLASORU, 'yonetici-ozeti.png'), koyu, 'hero-yonetici.png');
     const toplanti = await heroUret(anahtar,
       path.join(LOGO_KLASORU, 'toplanti-ciktilari.png'), koyu, 'hero-toplanti.png');
     const logo = await logoUret(anahtar, koyu);

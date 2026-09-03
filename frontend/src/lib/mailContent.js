@@ -14,11 +14,16 @@ export const TEMPLATE_TYPES = {
   TOPLANTI_CIKTILARI: "TOPLANTI_CIKTILARI",
 };
 
+/**
+ * Kullaniciya GORUNEN adlar. Anahtarlar (TOPLANTI_CIKTILARI gibi) sozlesmenin
+ * parcasi ve veritabaninda yazili - onlar DEGISMEZ, yalnizca bu metinler
+ * degisir. "Toplanti Ciktilari" -> "Toplanti Notlari" boyle yapildi.
+ */
 export const TEMPLATE_LABELS = {
   KAPANIS: "Sprint Kapanış",
   PLANLAMA: "Sprint Planlama",
   YONETICI_OZETI: "Yönetici Özeti",
-  TOPLANTI_CIKTILARI: "Toplantı Çıktıları",
+  TOPLANTI_CIKTILARI: "Toplantı Notları",
 };
 
 /**

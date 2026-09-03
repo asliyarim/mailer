@@ -1187,24 +1187,33 @@ textarea::placeholder {
 
 /* Bölümün altındaki "+ satır ekle". Boş bölümde de var - kullanıcı hiçbir
    şey doldurmamışken de mailin üstünden satır ekleyebilsin. */
+/* Bölümün renkli başlık şeridinin SAĞ UCUNDA duran "+" düğmesi.
+   Ölçüsü OnizlemeKatmani'ndeki DUGME_OLCUSU ile aynı olmak zorunda -
+   konum orada hesaplanıyor. */
 .bolume-ekle {
   position: fixed;
   z-index: 55;
-  border: 1px dashed #b6cde8;
-  border-radius: 999px;
-  padding: 4px 12px;
-  background: rgba(255, 255, 255, 0.94);
-  color: var(--mavi);
-  font-size: 12px;
-  font-weight: 700;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 50%;
+  padding: 0;
+  /* Şerit koyu ve her bölümde farklı renkte; beyaz saydamlık her rengin
+     üstünde çalışıyor - sabit bir renk seçseydik bordo şeritte kaybolurdu. */
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1;
   cursor: pointer;
-  transition: background-color 0.12s, border-color 0.12s;
+  transition: background-color 0.12s, transform 0.12s;
 }
 
 .bolume-ekle:hover {
-  background: var(--mavi-soluk);
-  border-color: var(--mavi);
-  border-style: solid;
+  background: rgba(255, 255, 255, 0.34);
+  transform: scale(1.08);
 }
 
 .satir-arac__no {

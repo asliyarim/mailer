@@ -119,7 +119,7 @@ public final class OrnekIcerik {
     public static MailContent toplantiCiktilari() {
         return new MailContent(
                 1,
-                new MailContent.Header("TOPLANTI ÇIKTILARI VE ALINAN KARARLAR", "", "RPA Takımı"),
+                new MailContent.Header("TOPLANTI NOTLARI", "", "RPA Takımı"),
                 new MailContent.Meeting(
                         "02.09.2026", "14:00 – 15:30", "Microsoft Teams & Toplantı Salonu A",
                         "Dijital Dönüşüm & Süreç İyileştirme Değerlendirme Toplantısı",

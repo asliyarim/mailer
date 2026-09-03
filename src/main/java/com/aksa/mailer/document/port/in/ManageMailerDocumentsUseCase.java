@@ -13,7 +13,14 @@ import java.util.List;
  */
 public interface ManageMailerDocumentsUseCase {
 
-    List<DocumentSummary> takimBelgeleri(Long teamId);
+    /**
+     * Bir takimin belgeleri. arama bos/null ise SUZULMEZ.
+     *
+     * Arama sonBelgeler() ile AYNI davranisi tasir (baslik + donem, Turkce
+     * kucuk harf ve sapkali katlamasiyla) - iki ekranda iki farkli arama
+     * olsaydi kullanici hangisinin nasil calistigini kestiremezdi.
+     */
+    List<DocumentSummary> takimBelgeleri(Long teamId, String arama);
 
     /**
      * Kullanicinin erisebildigi BUTUN takimlarin belgeleri, en yeni once.

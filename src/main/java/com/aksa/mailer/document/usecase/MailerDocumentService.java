@@ -52,11 +52,26 @@ public class MailerDocumentService implements ManageMailerDocumentsUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public List<DocumentSummary> takimBelgeleri(Long teamId) {
+    public List<DocumentSummary> takimBelgeleri(Long teamId, String arama) {
         Map<Long, String> adlar = takimAdlari(List.of(teamId));
+        String aranan = arama == null ? "" : sadelestir(arama.trim());
         return documentRepository.takimBelgeleri(teamId).stream()
                 .map(d -> ozet(d, adlar))
+                // Bos arama SUZMEZ: kullanici kutuyu temizleyince liste geri gelir.
+                .filter(o -> aranan.isEmpty() || eslesiyorTekTakim(o, aranan))
                 .toList();
+    }
+
+    /**
+     * Tek takim listesinde eslesme: baslik VEYA donem.
+     *
+     * sonBelgeler()'deki eslesme takim adini da tariyor cunku orada birden
+     * cok takimin belgesi karisik duruyor. Burada takim ZATEN secili, yani
+     * butun satirlarda ayni: takim adi da taransaydi kullanici takiminin
+     * adini yazdiginda HICBIR SEYI suzmeyen bir filtre calisirdi.
+     */
+    private static boolean eslesiyorTekTakim(DocumentSummary ozet, String aranan) {
+        return icerir(ozet.title(), aranan) || icerir(ozet.period(), aranan);
     }
 
     /**

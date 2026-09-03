@@ -43,11 +43,17 @@ public class MailerDocumentController {
         this.teams = teams;
     }
 
+    /**
+     * "Belgelerim"deki takim listesi. q ile suzulebilir - giris sayfasindaki
+     * aramayla AYNI davranis (bkz. ManageMailerDocumentsUseCase).
+     */
     @GetMapping
-    public List<ManageMailerDocumentsUseCase.DocumentSummary> listele(@RequestParam Long teamId,
-                                                                      Authentication authentication) {
+    public List<ManageMailerDocumentsUseCase.DocumentSummary> listele(
+            @RequestParam Long teamId,
+            @RequestParam(required = false) String q,
+            Authentication authentication) {
         OturumKullanicisi.of(authentication).dogrula(teamId);
-        return documents.takimBelgeleri(teamId);
+        return documents.takimBelgeleri(teamId, q);
     }
 
     /**

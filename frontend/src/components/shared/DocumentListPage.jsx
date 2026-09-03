@@ -1,10 +1,21 @@
-// "Belgelerim" ekranı: takım seçimi + o takımın mail listesi + yeni taslak.
+// "Belgelerim": takım seçimi + o takımın mailleri + arama.
+//
+// ARAMA SUNUCUDA: q parametresi başlıkta ve dönemde arıyor (Türkçe harf
+// kurallarıyla, şapkalı sesliler katlanarak). Burada ikinci bir filtre yok -
+// olsaydı iki arama mantığı olur ve zamanla ayrışırlardı.
+//
+// Arama SEÇİLİ TAKIM içinde arar. Giriş sayfasındaki "son taslaklar" bütün
+// takımlarda arıyordu ama o liste kaldırıldı; takım bilinmiyorsa takımlar
+// arasında gezmek gerekiyor.
 
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { fetchDocuments, fetchTeams } from '../../lib/apiClient.js'
 import { TEMPLATE_LABELS, TEMPLATE_TYPES } from '../../lib/mailContent.js'
 import Button from './Button.jsx'
+
+// Her tuşa basışta istek atmamak için bekleme (önizlemedekiyle aynı mantık).
+const ARAMA_GECIKMESI_MS = 300
 
 function tarihBicimle(isoTarih) {
   if (!isoTarih) return ''
@@ -27,6 +38,7 @@ export default function DocumentListPage() {
   const [teams, setTeams] = useState([])
   const [seciliTeamId, setSeciliTeamId] = useState(null)
   const [belgeler, setBelgeler] = useState([])
+  const [arama, setArama] = useState('')
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hata, setHata] = useState(null)
 
@@ -44,16 +56,33 @@ export default function DocumentListPage() {
   }, [])
 
   useEffect(() => {
-    if (seciliTeamId == null) return
+    if (seciliTeamId == null) return undefined
+    let iptal = false
     setYukleniyor(true)
-    fetchDocuments(seciliTeamId)
-      .then((liste) => {
-        setBelgeler(liste)
-        setHata(null)
-      })
-      .catch((e) => setHata(e.message))
-      .finally(() => setYukleniyor(false))
-  }, [seciliTeamId])
+
+    const zamanlayici = setTimeout(() => {
+      fetchDocuments(seciliTeamId, arama)
+        .then((liste) => {
+          if (iptal) return
+          setBelgeler(liste)
+          setHata(null)
+        })
+        .catch((e) => {
+          if (!iptal) setHata(e.message)
+        })
+        .finally(() => {
+          if (!iptal) setYukleniyor(false)
+        })
+    }, ARAMA_GECIKMESI_MS)
+
+    return () => {
+      iptal = true
+      clearTimeout(zamanlayici)
+    }
+  }, [seciliTeamId, arama])
+
+  const aramaVar = arama.trim().length > 0
+  const seciliTakim = teams.find((t) => t.id === seciliTeamId)
 
   return (
     <main className="sayfa">
@@ -62,7 +91,7 @@ export default function DocumentListPage() {
           <div>
             <h1 className="sayfa__baslik">Belgelerim</h1>
             <p className="sayfa__alt">
-              Takımın hazırladığı sprint mailleri. Bir satıra tıklayarak düzenleyin.
+              Takımın hazırladığı mailler. Bir satıra tıklayarak düzenleyin.
             </p>
           </div>
           <span className="sag-yasla">
@@ -72,8 +101,8 @@ export default function DocumentListPage() {
           </span>
         </div>
 
-        {/* Takım seçimi: iki takım için açılır liste fazla ağır kaçıyor,
-            kaç takım olduğu doğrudan görünsün. */}
+        {/* Takım seçimi: kaç takım olduğu doğrudan görünsün diye açılır liste
+            değil hap düğmeler. */}
         {teams.length > 1 && (
           <div className="satir-arasi">
             <span className="alan__etiket">Takım</span>
@@ -92,6 +121,21 @@ export default function DocumentListPage() {
           </div>
         )}
 
+        <div className="liste-basligi">
+          <h2 className="sayfa__baslik" style={{ fontSize: 17 }}>
+            {seciliTakim?.name ?? 'Belgeler'}
+          </h2>
+
+          <input
+            type="search"
+            className="arama-kutusu"
+            placeholder="Başlık veya dönem ara — “Ağustos 2026”, “Sprint 42”"
+            aria-label="Bu takımın belgelerinde ara"
+            value={arama}
+            onChange={(e) => setArama(e.target.value)}
+          />
+        </div>
+
         {hata && <div className="uyari uyari--hata">{hata}</div>}
 
         {yukleniyor && <p className="sessiz-metin">Yükleniyor…</p>}
@@ -99,14 +143,19 @@ export default function DocumentListPage() {
         {!yukleniyor && belgeler.length === 0 && !hata && (
           <div className="card">
             <div className="bos-durum">
-              <p className="bos-durum__baslik">Bu takımda henüz mail yok</p>
-              <p className="bos-durum__metin">
-                "Yeni mail" ile başlayın — tipi seçtiğinizde bölümler ve sütunlar
-                hazır gelir, siz sadece satırları doldurursunuz.
+              <p className="bos-durum__baslik">
+                {aramaVar ? 'Bu takımda eşleşen mail yok' : 'Bu takımda henüz mail yok'}
               </p>
-              <Button varyant="birincil" onClick={() => navigate('/')}>
-                + Yeni mail
-              </Button>
+              <p className="bos-durum__metin">
+                {aramaVar
+                  ? 'Aradığınız mail başka bir takımda olabilir — yukarıdan takımı değiştirin.'
+                  : '"Yeni mail" ile başlayın — tipi seçtiğinizde bölümler ve sütunlar hazır gelir, siz sadece satırları doldurursunuz.'}
+              </p>
+              {!aramaVar && (
+                <Button varyant="birincil" onClick={() => navigate('/')}>
+                  + Yeni mail
+                </Button>
+              )}
             </div>
           </div>
         )}

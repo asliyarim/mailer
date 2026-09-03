@@ -167,16 +167,24 @@ export default function PreviewPane({
       })
     }
 
-    // Ayni bolum icin iki capa var (baslik seridi ve tablo). Sonuncusunu
-    // aliyoruz: satir varsa tablonun altina, yoksa basligin altina duser.
-    const sonCapa = new Map()
+    // Ayni bolum icin iki capa var: renkli BASLIK SERIDI ve (satir varsa)
+    // tablo. ILKINI aliyoruz - "+ satir ekle" basligin sag ucuna oturuyor.
+    //
+    // Onceden sonuncusu aliniyordu ve dugme bolumun ALTINDA duruyordu;
+    // orada bir sonraki bolumun basligina daha yakin goruunuyor ve hangi
+    // bolume satir ekledigi anlasilmiyordu (yonetici geri bildirimi).
+    const ilkCapa = new Map()
     for (const el of belge.querySelectorAll(`[${BOLUM_NITELIGI}]`)) {
-      sonCapa.set(el.getAttribute(BOLUM_NITELIGI), el)
+      const key = el.getAttribute(BOLUM_NITELIGI)
+      if (!ilkCapa.has(key)) ilkCapa.set(key, el)
     }
     const bolumler = []
-    for (const [key, el] of sonCapa) {
+    for (const [key, el] of ilkCapa) {
       const kutu = kutuyuOlc(el)
-      if (kutu && gorunur(kutu)) bolumler.push({ key, kutu })
+      if (!kutu || !gorunur(kutu)) continue
+      // Baslik metni dugmenin erisilebilirlik etiketinde kullaniliyor -
+      // "hangi bolume ekliyorum" sorusu ekran okuyucuda da cevapli olsun.
+      bolumler.push({ key, kutu, baslik: el.textContent?.trim().slice(0, 60) ?? '' })
     }
 
     setKatman({ satirlar, bolumler })

@@ -129,7 +129,7 @@ final class VarsayilanIcerik {
         // Toplanti Ciktilari TAKIMLAR USTU: basligina takim adi konmaz.
         // Sprint disi bir toplantinin ciktisi bir takimin adiyla baslamaz.
         if (tip == TemplateType.TOPLANTI_CIKTILARI) {
-            return new MailContent.Header("TOPLANTI ÇIKTILARI VE ALINAN KARARLAR", "", ad);
+            return new MailContent.Header("TOPLANTI NOTLARI", "", ad);
         }
 
         String son = switch (tip) {

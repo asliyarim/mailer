@@ -191,8 +191,17 @@ export async function fetchTeams() {
 
 // --- Belgeler ---------------------------------------------------------------
 
-export async function fetchDocuments(teamId) {
-  const response = await authFetch(`/api/mailer/documents?teamId=${encodeURIComponent(teamId)}`, getInit);
+/**
+ * Bir takimin belgeleri. `q` verilirse SUNUCU suzuyor - basliкta ve donemde,
+ * Turkce harf kurallariyla (docs/api.md).
+ *
+ * Istemcide ikinci bir filtre YOK: iki arama mantigi olsaydi ozellikle
+ * sapkali sesli katlamasi gibi ince kurallarda zamanla ayrisirlardi.
+ */
+export async function fetchDocuments(teamId, q = "") {
+  const parametreler = new URLSearchParams({ teamId: String(teamId) });
+  if (q.trim()) parametreler.set("q", q.trim());
+  const response = await authFetch(`/api/mailer/documents?${parametreler}`, getInit);
   await ensureOk(response, "Belgeler alınamadı.");
   return response.json();
 }

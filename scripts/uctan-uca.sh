@@ -45,7 +45,7 @@ for TIP in KAPANIS PLANLAMA YONETICI_OZETI TOPLANTI_CIKTILARI; do
   case "$TIP" in
     YONETICI_OZETI)     BEKLENEN_BASLIK="RPA SPRINT YÖNETİCİ ÖZETİ" ;;
     # Takimlar ustu: basliga takim adi konmaz.
-    TOPLANTI_CIKTILARI) BEKLENEN_BASLIK="TOPLANTI ÇIKTILARI VE ALINAN KARARLAR" ;;
+    TOPLANTI_CIKTILARI) BEKLENEN_BASLIK="TOPLANTI NOTLARI" ;;
     *)              BEKLENEN_BASLIK="RPA SPRINT BİLGİLENDİRME" ;;
   esac
   kontrol "belge dogar" 1 "$(alan currentVersion < "$G/belge.json")"

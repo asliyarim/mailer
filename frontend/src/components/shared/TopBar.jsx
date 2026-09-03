@@ -30,7 +30,7 @@ export default function TopBar({ user, durum, durumUyari }) {
           />
         </div>
         <div>
-          <div className="ust-serit__ad">Aksa Mailler</div>
+          <div className="ust-serit__ad">Aksa Mailer</div>
           <div className="ust-serit__alt">Sprint bilgilendirme maili üretici</div>
         </div>
       </Link>

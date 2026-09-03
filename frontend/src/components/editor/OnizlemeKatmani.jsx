@@ -6,6 +6,11 @@
 // Outlook'a düzenleme düğmesi taşıyan bir mail gitmesi kabul edilemez.
 // Düğmeler iframe'in dışında, ana pencerede, ölçülen konumlara yerleşiyor.
 
+// "+" düğmesinin ölçüsü ve şeridin sağ kenarından boşluğu. CSS ile aynı
+// olmak zorunda: konum JS'te hesaplanıyor, görünüm CSS'te.
+const DUGME_OLCUSU = 28
+const SAG_BOSLUK = 14
+
 const SATIR_ARACLARI = [
   { islem: 'yukari', isaret: '↑', baslik: 'Yukarı taşı' },
   { islem: 'asagi', isaret: '↓', baslik: 'Aşağı taşı' },
@@ -54,22 +59,26 @@ export default function OnizlemeKatmani({ satirlar, bolumler, onSatirIslemi, onB
       ))}
 
       {/* Bölüm BOŞ olsa da başlığı çiziliyor, yani bu düğme her zaman var:
-          hiç satırı olmayan bölüme de buradan satır eklenebiliyor. */}
+          hiç satırı olmayan bölüme de buradan satır eklenebiliyor.
+
+          Renkli BAŞLIK ŞERİDİNİN sağ ucunda, başlıkla aynı hizada duruyor.
+          Önceden bölümün altındaydı ve bir sonraki bölümün başlığına daha
+          yakın görünüyordu - hangi bölüme eklediği anlaşılmıyordu. */}
       {bolumler.map((bolum) => (
         <button
           key={bolum.key}
           type="button"
           className="bolume-ekle"
-          // Bölümün SAĞ kenarına hizalı: sola koyunca tablonun ilk sütunuyla
-          // aynı hizada duruyor ve tablonun parçasıymış gibi görünüyordu.
+          title={bolum.baslik ? `${bolum.baslik} bölümüne satır ekle` : 'Satır ekle'}
+          aria-label={bolum.baslik ? `${bolum.baslik} bölümüne satır ekle` : 'Satır ekle'}
           style={{
-            top: bolum.kutu.top + bolum.kutu.height + 4,
-            left: bolum.kutu.left + bolum.kutu.width,
-            transform: 'translateX(-100%)',
+            // Şeridin dikey ortasına: (yükseklik - düğme) / 2
+            top: bolum.kutu.top + (bolum.kutu.height - DUGME_OLCUSU) / 2,
+            left: bolum.kutu.left + bolum.kutu.width - DUGME_OLCUSU - SAG_BOSLUK,
           }}
           onClick={() => onBolumeEkle(bolum.key)}
         >
-          + satır ekle
+          +
         </button>
       ))}
     </>

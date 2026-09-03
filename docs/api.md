@@ -734,7 +734,7 @@ ve kullanıcı bunu hata sanar.
 `Karar Bekliyor`, `Tamamlandı`. **Sprint Planlama'da aynı alan serbest
 metindir** — orada ortak liste dayatmak veri kaybettirirdi.
 
-**Toplantı Çıktıları**
+**Toplantı Notları**
 
 Sprint dışı toplantılar için. Yönetici Özeti'yle örtüşüyor ama **ayrı
 duruyor**: Yönetici Özeti bir takımın **sprint'ine** bağlı, bu ise
@@ -779,8 +779,7 @@ Sayaçlar: `GÖRÜŞÜLEN KONU`, `ALINAN KARAR`, `AÇIK AKSİYON`, `İLGİLİ EK
 > bir ekip hiç konu açmadan karar veya aksiyon almış olabilir, o da
 > toplantıya dahildir.
 
-Başlık türetmesinde **takım adı kullanılmaz**: `TOPLANTI ÇIKTILARI VE ALINAN
-KARARLAR`. Tip takımlar üstü — sprint dışı bir toplantının çıktısı bir
+Başlık türetmesinde **takım adı kullanılmaz**: `TOPLANTI NOTLARI`. Tip takımlar üstü — sprint dışı bir toplantının çıktısı bir
 takımın adıyla başlamaz. Belge yine bir takıma aittir (yetki için).
 
 > **Neden bazı alanlar varsayılan kapalı:** mail gövdesi 760 piksel sabit
