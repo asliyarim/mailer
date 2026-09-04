@@ -112,6 +112,19 @@ public class MailerDocumentController {
         return yanit(olusan);
     }
 
+    /**
+     * "Geçen sprintten devam et" - kaynağın kopyasını yeni taslak olarak açar.
+     *
+     * erisilebilirBelge() ile KAYNAGIN takımına yetki doğrulanıyor; kopya aynı
+     * takımda doğduğu için ikinci bir kontrol gerekmiyor.
+     */
+    @PostMapping("/{id}/kopya")
+    @ResponseStatus(HttpStatus.CREATED)
+    public MailerDocumentResponse kopyala(@PathVariable Long id, Authentication authentication) {
+        erisilebilirBelge(id, authentication);
+        return yanit(documents.kopyala(id, authentication.getName()));
+    }
+
     @PutMapping("/{id}")
     public MailerDocumentResponse kaydet(@PathVariable Long id,
                                          @Valid @RequestBody SaveDocumentRequest istek,

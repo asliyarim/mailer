@@ -20,7 +20,15 @@ public enum Tone {
      * AKSIYONLAR" tablosu bunu kullaniyor: tamamlanmis is yesil, devam eden
      * mavi, bekleyen turuncu okunuyor.
      */
-    ORANGE("orange");
+    ORANGE("orange"),
+    /**
+     * Asagidaki uc ton bir ROL tasimaz - kullanicinin gorsel tercihi.
+     * Bolum basliklarina mavi/yesil/turuncu disinda secenek istendi.
+     * Renkleri render/theme/EkTonlar.java'da, takimdan bagimsiz.
+     */
+    PEMBE("pink"),
+    SARI("yellow"),
+    MOR("purple");
 
     private final String jsonDegeri;
 

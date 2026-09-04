@@ -573,8 +573,8 @@ textarea::placeholder {
   border: 1px solid var(--cizgi);
   background: #fff;
   border-radius: 999px;
-  padding: 8px 13px;
-  font-size: 12px;
+  padding: 9px 15px;
+  font-size: 13.5px;
   font-weight: 700;
   color: #334155;
   cursor: pointer;
@@ -614,6 +614,34 @@ textarea::placeholder {
   background: #c2620f;
   border-color: #c2620f;
   box-shadow: 0 4px 12px rgba(194, 98, 15, 0.22);
+}
+
+/* Pembe / sarı / mor: ROL taşımayan, yalnızca görsel tercih olan tonlar.
+   Üçü de AÇIK renk olduğu için yazı KOYU - .seg--secili'nin beyaz yazısı
+   bunların üstünde okunmuyor (ölçüldü: 1.10 ile 1.92 arası kontrast).
+   Aynı koyu değerler mailde de kullanılıyor (render/theme/EkTonlar.java). */
+.seg--pink.seg--secili,
+.seg--pink.seg--secili:hover {
+  background: #fe9ec7;
+  border-color: #e8619c;
+  color: #6b2140;
+  box-shadow: 0 4px 12px rgba(232, 97, 156, 0.22);
+}
+
+.seg--yellow.seg--secili,
+.seg--yellow.seg--secili:hover {
+  background: #f9f6c4;
+  border-color: #c9b83a;
+  color: #5c5218;
+  box-shadow: 0 4px 12px rgba(201, 184, 58, 0.22);
+}
+
+.seg--purple.seg--secili,
+.seg--purple.seg--secili:hover {
+  background: #bdb2ff;
+  border-color: #8b78f0;
+  color: #2f2470;
+  box-shadow: 0 4px 12px rgba(139, 120, 240, 0.22);
 }
 
 /* Mail tipi seçimi: radyo düğmesi yerine açıklamalı kutu. Tip sonradan
@@ -775,6 +803,18 @@ textarea::placeholder {
   background: #fffcf6;
 }
 
+.bolum--pink {
+  background: #fff8fb;
+}
+
+.bolum--yellow {
+  background: #fffef7;
+}
+
+.bolum--purple {
+  background: #faf9ff;
+}
+
 .bolum + .bolum {
   margin-top: 12px;
 }
@@ -805,6 +845,20 @@ textarea::placeholder {
   background: #d97706;
 }
 
+/* Nokta 10px ve beyaz zeminde: paletin kendi tonu (#fe9ec7 vb.) neredeyse
+   görünmez kalıyordu, o yüzden bir tık koyu karşılıkları. */
+.nokta--pink {
+  background: #e8619c;
+}
+
+.nokta--yellow {
+  background: #c9b83a;
+}
+
+.nokta--purple {
+  background: #8b78f0;
+}
+
 /* ------------------------------------------------------------ satır kartı */
 
 .satir-karti {
@@ -821,6 +875,18 @@ textarea::placeholder {
 
 .satir-karti--orange {
   background: #fffdf8;
+}
+
+.satir-karti--pink {
+  background: #fffafc;
+}
+
+.satir-karti--yellow {
+  background: #fffefa;
+}
+
+.satir-karti--purple {
+  background: #fcfbff;
 }
 
 .satir-karti__ust {
@@ -1031,8 +1097,20 @@ textarea::placeholder {
 
 .tip-kartlari {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
+  /* DORDU DE YAN YANA. auto-fit + minmax(260px) uc sutun veriyordu:
+     kap 1080px ve 4x260 + 3x14 = 1082, yani IKI PIKSEL yetmiyordu ve
+     dorduncu kart alt satira dusuyordu. Sutun sayisi artik acikca
+     yaziliyor, bosluk da 12px. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1000px) {
+  .tip-kartlari { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .tip-kartlari { grid-template-columns: 1fr; }
 }
 
 /* Tip kartı: giriş sayfasındaki üç büyük seçim. Düğme olarak yazıldı,
@@ -1041,9 +1119,11 @@ textarea::placeholder {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
   text-align: left;
-  padding: 20px 18px 18px;
+  /* Dort sutunda kart ~259px kaliyor; dolgu bir tik kisildi ki
+     aciklama metni iki satira sigsin. */
+  padding: 18px 15px 15px;
   border: 1px solid var(--cizgi);
   border-radius: var(--yuvarlak);
   background: var(--panel);
@@ -1057,6 +1137,74 @@ textarea::placeholder {
   border-color: var(--mavi);
   box-shadow: var(--golge-kalkik);
   transform: translateY(-2px);
+}
+
+/* ------------------------------------------------------------- parıltı
+
+   Kart açılışta bir kez, üstüne gelince tekrar, tıklayınca daha kısa
+   parlıyor.
+
+   Parıltı BEYAZ DEĞİL: kart zemini zaten beyaz (--panel), beyaz bir tarama
+   hiç görünmezdi. Kurumsal mavi düşük saydamlıkla kullanılıyor.
+
+   İKİ ayrı katman var ve birleştirilemez: ::before açılışı animation ile,
+   ::after hover'ı transition ile sürüyor. Tek katmanda toplansaydı üstüne
+   gelmek açılış animasyonunu ortasından keserdi. */
+
+.tip-karti::before,
+.tip-karti::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 52%;
+  pointer-events: none;
+  /* Beyaz kartta gorunmesi icin mavi cekirdek, ortasinda ince bir beyaz
+     parlama, arkasinda kurumsal yesilden bir iz. Yalnizca beyaz kullanilsa
+     beyaz zeminde hic gorunmezdi - olculdu. */
+  background: linear-gradient(
+    105deg,
+    rgba(11, 74, 162, 0) 0%,
+    rgba(11, 74, 162, 0.17) 42%,
+    rgba(255, 255, 255, 0.5) 52%,
+    rgba(121, 169, 40, 0.13) 62%,
+    rgba(11, 74, 162, 0) 100%
+  );
+  transform: translateX(-170%) skewX(-14deg);
+}
+
+/* Açılış: dört kart sırayla, soldan sağa. */
+.tip-karti::before {
+  animation: parilti 0.95s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.tip-karti:nth-child(1)::before { animation-delay: 0.1s; }
+.tip-karti:nth-child(2)::before { animation-delay: 0.22s; }
+.tip-karti:nth-child(3)::before { animation-delay: 0.34s; }
+.tip-karti:nth-child(4)::before { animation-delay: 0.46s; }
+
+@keyframes parilti {
+  from { transform: translateX(-170%) skewX(-14deg); }
+  to { transform: translateX(270%) skewX(-14deg); }
+}
+
+/* Üstüne gelince aynı tarama, bu kez transition ile.
+   Fare çekilince geçiş TANIMLI DEĞİL - parıltı görünmeden başa döner,
+   yoksa her ayrılışta ters yönde ikinci bir tarama olurdu. */
+.tip-karti:hover::after {
+  transform: translateX(270%) skewX(-14deg);
+  transition: transform 0.72s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Tıklama: kart hafifçe basılır, parıltı daha kısa geçer. */
+.tip-karti:active {
+  transform: translateY(0) scale(0.988);
+  transition: transform 0.08s ease;
+}
+
+.tip-karti:active::after {
+  transition-duration: 0.32s;
 }
 
 /* Üstteki renk şeridi tipin tonunu taşıyor - mailde de o renk çıkacak. */
@@ -1385,5 +1533,134 @@ textarea::placeholder {
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
+    animation: none !important;
   }
+
+  /* Parıltı katmanları hiç çizilmesin - animation kapatilinca ekranin
+     solunda duran seffaf bir seritten ibaret kalirlar. */
+  .tip-karti::before,
+  .tip-karti::after {
+    display: none;
+  }
+}
+
+/* ══ "Geçen sprintten devam et" (giriş sayfası, yalnızca PO) ═══════════
+ *
+ * Şablon kartlarının ALTINDA ve onlardan daha SESSIZ duruyor. Sıralama
+ * bilinçli: yeni bir mail tipiyle başlamak asıl yol, geçen sprintten devam
+ * etmek kestirme. Kestirme, asıl yolu bastırmamalı - o yüzden kartlar
+ * değil satırlar, ve şablon kartlarındaki renkli tonlar burada yok.
+ */
+.devam {
+  margin-top: 22px;
+  padding: 18px 20px 16px;
+  background: var(--panel);
+  border: 1px solid var(--cizgi);
+  border-radius: 14px;
+}
+
+.devam__ust { margin-bottom: 12px; }
+
+.devam__baslik {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--murekkep);
+  letter-spacing: -0.01em;
+}
+
+.devam__alt {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--soluk);
+  line-height: 1.45;
+}
+
+.devam__liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+/* Satır ızgarası: tip · ad (esner) · dönem · zaman · düğme.
+   Ad minmax(0,1fr) ile esniyor; bu olmadan uzun başlık satırı taşırır. */
+.devam__kart {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--panel-soluk);
+  border: 1px solid var(--cizgi-soluk);
+  border-radius: 10px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.devam__kart:hover {
+  background: var(--panel);
+  border-color: var(--mavi-cizgi);
+}
+
+.devam__tip {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mavi);
+  background: var(--mavi-soluk);
+  border: 1px solid var(--mavi-cizgi);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.devam__ad {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--murekkep);
+  /* Uzun başlık satırı bozmasın - tek satırda kalsın, taşan yer üç nokta.
+     Tam metin title niteliğinde duruyor. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.devam__donem,
+.devam__zaman {
+  font-size: 12px;
+  color: var(--soluk);
+  white-space: nowrap;
+}
+
+.devam__donem {
+  padding-left: 12px;
+  border-left: 1px solid var(--cizgi);
+}
+
+/* Düğme HER ZAMAN son sütunda. Dönem alanı boş olan maillerde (ör. toplantı
+   çıktıları) o hücre çizilmiyor; sabitlenmeseydi düğme bir sütun sola kayar
+   ve satırlar arasında hizasız dururdu. */
+.devam__eylem {
+  grid-column: -2 / -1;
+  justify-self: end;
+}
+
+.devam__hata {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--hata);
+}
+
+/* Dar ekran: ızgara satırı beş sütunda sıkışıyor - iki satıra ayrılıyor. */
+@media (max-width: 760px) {
+  .devam__kart {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 6px;
+  }
+  .devam__tip { grid-column: 1 / -1; justify-self: start; }
+  .devam__ad { grid-column: 1 / -1; white-space: normal; }
+  .devam__donem { padding-left: 0; border-left: 0; }
+  .devam__eylem { grid-column: 2; justify-self: end; }
 }

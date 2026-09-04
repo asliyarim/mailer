@@ -10,7 +10,8 @@
 //   - Yedi takim RPA'nin lacivert gorselini yer tutucu kullaniyordu; bordo
 //     bir mailin icinde lacivert bir robot duruyordu.
 //   - Maskot kaldirildi, yerine takim damgasi geldi (yonetici istegi).
-// Renkler Temalar.java ile AYNI olmak zorunda - orada degisirse burada da.
+// Zemin rengi Temalar.java ile AYNI olmak zorunda - orada degisirse burada da.
+// Artik SEKIZINDE DE ayni: tek palete gecildi, takimlari damga ayiriyor.
 //
 // Damga tasarimi OZGUNDUR. Ic ice halka fikri yaygin bir gorsel arac;
 // herhangi bir markanin cizimi kopyalanmadi.
@@ -34,14 +35,14 @@ const AKSA_YESIL = '#8ccc4f';
  */
 const LOGO_KLASORU = path.join(__dirname, 'varliklar/takim-logolari');
 const TAKIMLAR = [
-  ['rpa',                 'rpa.jpg',                 '#003b78'],
-  ['is-zekasi',           'is-zekasi.jpg',           '#7a4405'],
-  ['urun-gelistirme',     'urun-gelistirme.jpg',     '#701a3a'],
-  ['yapay-zeka',          'yapay-zeka.jpg',          '#3b2f8f'],
-  ['dijital-uygulamalar', 'dijital-uygulamalar.jpg', '#052c59'],
-  ['dokuman',             'dokuman.jpg',             '#2f3b4a'],
-  ['cbs',                 'cbs.jpg',                 '#0a4f49'],
-  ['mobil',               'mobil.jpg',               '#1a3a8f'],
+  ['rpa',                   'rpa.jpg',                    '#0d47a1'],
+  ['is-zekasi',             'is-zekasi.jpg',              '#0d47a1'],
+  ['urun-gelistirme',       'urun-gelistirme.jpg',        '#0d47a1'],
+  ['yapay-zeka',            'yapay-zeka.jpg',             '#0d47a1'],
+  ['dijital-uygulamalar',   'dijital-uygulamalar.jpg',    '#0d47a1'],
+  ['dokuman',               'dokuman.jpg',                '#0d47a1'],
+  ['cbs',                   'cbs.jpg',                    '#0d47a1'],
+  ['mobil',                 'mobil.jpg',                  '#0d47a1'],
 ];
 
 // --- takim logosu ------------------------------------------------------------

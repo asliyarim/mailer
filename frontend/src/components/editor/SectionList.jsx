@@ -12,16 +12,10 @@ import {
   emptySection,
   EN_FAZLA_BAGLANTI,
   TEMPLATE_TYPES,
+  TON_SECENEKLERI,
   VARSAYILAN_SUTUNLAR,
 } from '../../lib/mailContent.js'
 
-// Ton bir ROL: gerçek renk temadan gelir. Turuncu her temada aynı anlamda
-// (bekleyen / dikkat), o yüzden takıma göre değişmiyor.
-const TON_SECENEKLERI = [
-  { deger: 'blue', etiket: 'Mavi' },
-  { deger: 'green', etiket: 'Yeşil' },
-  { deger: 'orange', etiket: 'Turuncu' },
-]
 
 /** Bağlantı kartları bölümü - tablo değil, yan yana kartlar olarak çiziliyor. */
 const BAGLANTI_BOLUMU = 'links'

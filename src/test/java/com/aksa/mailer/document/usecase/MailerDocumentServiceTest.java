@@ -2,6 +2,7 @@ package com.aksa.mailer.document.usecase;
 
 import com.aksa.mailer.common.domain.NotFoundException;
 import com.aksa.mailer.common.domain.VersionConflictException;
+import com.aksa.mailer.document.domain.DonemArtirici;
 import com.aksa.mailer.document.domain.DownloadFormat;
 import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.MailContentValidator;
@@ -338,6 +339,102 @@ class MailerDocumentServiceTest {
 
         assertThat(kaydedilen.currentVersion()).isEqualTo(2);
         assertThat(versionRepo.gecmis(taslak.id())).hasSize(2);
+    }
+
+    // ── "Geçen sprintten devam et" ────────────────────────────────────
+
+    @Test
+    @DisplayName("kopya İÇERİĞİ taşır - kopyalamanın bütün değeri orada")
+    void kopyaIcerigiTasir() {
+        MailerDocument kaynak = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "Sprint 24 Kapanışı", SICIL));
+        service.kaydet(new ManageMailerDocumentsUseCase.SaveDocumentCommand(
+                kaynak.id(), "Sprint 24 Kapanışı", "Konu", icerik("SPRINT BİLGİLENDİRME"), 1, SICIL));
+
+        MailerDocument kopya = service.kopyala(kaynak.id(), "99999");
+
+        // Satirlar, bolumler, notlar aynen tasinmali.
+        assertThat(kopya.content().sections())
+                .extracting(MailSection::key)
+                .isEqualTo(service.getir(kaynak.id()).content().sections()
+                        .stream().map(MailSection::key).toList());
+        assertThat(kopya.content().sections().get(0).rows())
+                .isEqualTo(service.getir(kaynak.id()).content().sections().get(0).rows());
+    }
+
+    @Test
+    @DisplayName("kopyada dönem ve başlık bir sonraki sprinte taşınır")
+    void kopyaDonemiArtirir() {
+        MailerDocument kaynak = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "Sprint 24 Kapanışı", SICIL));
+
+        MailerDocument kopya = service.kopyala(kaynak.id(), SICIL);
+
+        assertThat(kopya.title()).isEqualTo("Sprint 25 Kapanışı");
+        // Kural DonemArtirici'de; burada yalnizca BAGLANDIGI dogrulaniyor.
+        assertThat(kopya.content().header().period())
+                .isEqualTo(DonemArtirici.artir(kaynak.content().header().period())
+                        .orElse(kaynak.content().header().period()));
+    }
+
+    @Test
+    @DisplayName("artırılacak sayı yoksa başlığa (kopya) eklenir - iki aynı isim yan yana durmasın")
+    void kopyaAdiCakismaz() {
+        MailerDocument kaynak = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.TOPLANTI_CIKTILARI, "Ürün Yol Haritası Toplantısı", SICIL));
+
+        MailerDocument kopya = service.kopyala(kaynak.id(), SICIL);
+
+        assertThat(kopya.title()).isEqualTo("Ürün Yol Haritası Toplantısı (kopya)");
+    }
+
+    @Test
+    @DisplayName("kopya YENİ bir taslak - sürüm 1, kendi geçmişi, kopyalayanın adına")
+    void kopyaYeniTaslaktir() {
+        MailerDocument kaynak = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "Sprint 24 Kapanışı", SICIL));
+        service.kaydet(new ManageMailerDocumentsUseCase.SaveDocumentCommand(
+                kaynak.id(), "Sprint 24 Kapanışı", "Konu", icerik("BAŞLIK"), 1, SICIL));
+
+        MailerDocument kopya = service.kopyala(kaynak.id(), "99999");
+
+        assertThat(kopya.id()).isNotEqualTo(kaynak.id());
+        assertThat(kopya.currentVersion()).isEqualTo(1);
+        assertThat(kopya.createdBy()).isEqualTo("99999");
+        assertThat(versionRepo.gecmis(kopya.id())).hasSize(1);
+        // Kaynagin gecmisi kopyaya TASINMAZ - kaynak iki surumde kalmali.
+        assertThat(versionRepo.gecmis(kaynak.id())).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("kopyada konu satırı taşınmaz - yanlış konuyla gönderilmesin")
+    void kopyaKonuyuTasimaz() {
+        MailerDocument kaynak = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "Sprint 24 Kapanışı", SICIL));
+        service.kaydet(new ManageMailerDocumentsUseCase.SaveDocumentCommand(
+                kaynak.id(), "Sprint 24 Kapanışı", "24. Sprint sonuçları", icerik("BAŞLIK"), 1, SICIL));
+
+        assertThat(service.kopyala(kaynak.id(), SICIL).subject()).isNull();
+    }
+
+    @Test
+    @DisplayName("kopya kaynağı DEĞİŞTİRMEZ")
+    void kopyaKaynagaDokunmaz() {
+        MailerDocument kaynak = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.KAPANIS, "Sprint 24 Kapanışı", SICIL));
+
+        service.kopyala(kaynak.id(), SICIL);
+
+        MailerDocument sonrasi = service.getir(kaynak.id());
+        assertThat(sonrasi.title()).isEqualTo("Sprint 24 Kapanışı");
+        assertThat(sonrasi.currentVersion()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("olmayan belge kopyalanamaz - 404")
+    void olmayanBelgeKopyalanamaz() {
+        assertThatThrownBy(() -> service.kopyala(9999L, SICIL))
+                .isInstanceOf(NotFoundException.class);
     }
 
     @Test

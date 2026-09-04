@@ -36,6 +36,9 @@ public record MailTheme(
         ToneColors blue,
         ToneColors green,
         ToneColors orange,
+        ToneColors pembe,
+        ToneColors sari,
+        ToneColors mor,
         ThemeImage hero,
         /**
          * Yonetici Ozeti ve Toplanti Ciktilari sablonlarinin hero'su.
@@ -62,6 +65,9 @@ public record MailTheme(
         return switch (tone) {
             case GREEN -> green;
             case ORANGE -> orange;
+            case PEMBE -> pembe;
+            case SARI -> sari;
+            case MOR -> mor;
             case BLUE -> blue;
         };
     }

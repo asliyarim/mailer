@@ -44,6 +44,16 @@ public interface ManageMailerDocumentsUseCase {
     MailerDocument olustur(NewDocumentCommand komut);
 
     /**
+     * "Geçen sprintten devam et": kaynağın içeriğiyle YENI bir taslak açar,
+     * dönem numarasını bir artırır (bkz. DonemArtirici).
+     *
+     * Yetki kontrolu CAGIRANDA: kaynak belgenin takımına erişim, api/
+     * katmanındaki erisilebilirBelge() ile doğrulanır - diğer belge uçlarıyla
+     * aynı yerde dursun diye.
+     */
+    MailerDocument kopyala(Long kaynakId, String sicil);
+
+    /**
      * Bir belge OLUSTURULSAYDI icerigi ne olurdu - hicbir sey yazmadan.
      *
      * Arayuz, uygulama acilir acilmaz sag taraftaki mail sablonunu bosken de

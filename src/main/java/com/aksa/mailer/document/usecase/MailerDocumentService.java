@@ -2,6 +2,7 @@ package com.aksa.mailer.document.usecase;
 
 import com.aksa.mailer.common.domain.NotFoundException;
 import com.aksa.mailer.common.domain.VersionConflictException;
+import com.aksa.mailer.document.domain.DonemArtirici;
 import com.aksa.mailer.document.domain.DownloadFormat;
 import com.aksa.mailer.document.domain.MailContent;
 import com.aksa.mailer.document.domain.MailContentValidator;
@@ -211,6 +212,61 @@ public class MailerDocumentService implements ManageMailerDocumentsUseCase {
         MailerDocument kaydedilen = documentRepository.kaydet(taslak);
         versionRepository.ekle(kaydedilen.id(), 1, varsayilan, komut.sicil());
         return kaydedilen;
+    }
+
+    /**
+     * "Geçen sprintten devam et".
+     *
+     * NEDEN SUNUCUDA: istemci bunu "yeni belge oluştur, sonra içeriği kaydet"
+     * diye iki istekle de yapabilirdi. Ama ikinci istek düşerse geriye BOŞ bir
+     * belge kalırdı - kullanıcının silemediği bir çöp kayıt. Burada tek işlem:
+     * ya belge içeriğiyle birlikte doğar ya da hiç doğmaz.
+     *
+     * Kopyalanmayan üç şey var, üçü de bilerek:
+     *   - subject: mailin konu satırı sprint'e özel yazılıyor, taşınırsa
+     *     yanlış konuyla gönderilme riski var. Boş doğsun, kullanıcı yazsın.
+     *   - status/currentVersion: kopya YENI bir taslak, geçmişi kaynağınki
+     *     değil. Sürüm 1'den başlar.
+     *   - createdBy: kopyayı çıkaran kişi yazılır, kaynağın sahibi değil.
+     */
+    @Override
+    @Transactional
+    public MailerDocument kopyala(Long kaynakId, String sicil) {
+        MailerDocument kaynak = getir(kaynakId);
+
+        MailContent yeniIcerik = donemiArtirilmis(kaynak.content());
+        // Baslikta artirilacak sayi yoksa ad aynen kalirdi ve listede iki
+        // ayni isim yan yana dururdu - "(kopya)" o durumu ayirt ettiriyor.
+        String yeniBaslik = DonemArtirici.artir(kaynak.title())
+                .orElseGet(() -> kaynak.title() + " (kopya)");
+
+        MailerDocument taslak = MailerDocument.yeniTaslak(
+                kaynak.teamId(), kaynak.templateType(), yeniBaslik, yeniIcerik, sicil);
+
+        MailerDocument kaydedilen = documentRepository.kaydet(taslak);
+        versionRepository.ekle(kaydedilen.id(), 1, yeniIcerik, sicil);
+        return kaydedilen;
+    }
+
+    /**
+     * İçeriğin başlık bloğundaki dönem ve başlık metinlerini bir artırır.
+     * Geri kalan her şey (bölümler, satırlar, notlar) OLDUĞU GIBI taşınır -
+     * kopyalamanın bütün değeri zaten orada.
+     */
+    private MailContent donemiArtirilmis(MailContent icerik) {
+        MailContent.Header baslik = icerik.header();
+        if (baslik == null) {
+            return icerik;
+        }
+
+        MailContent.Header yeniBaslik = new MailContent.Header(
+                DonemArtirici.artir(baslik.title()).orElse(baslik.title()),
+                DonemArtirici.artir(baslik.period()).orElse(baslik.period()),
+                baslik.teamLabel());
+
+        return new MailContent(
+                icerik.schemaVersion(), yeniBaslik, icerik.meeting(),
+                icerik.intro(), icerik.sections(), icerik.notes(), icerik.footer());
     }
 
     @Override

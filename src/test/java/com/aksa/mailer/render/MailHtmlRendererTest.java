@@ -229,37 +229,57 @@ class MailHtmlRendererTest {
     class Tema {
 
         @Test
-        @DisplayName("RPA renkleri v2 prototipiyle aynı")
-        void rpaRenkleri() {
+        @DisplayName("ortak palet mailde geçiyor")
+        void ortakPalet() {
+            // Sekiz takim da AYNI paleti kullaniyor (bkz. Temalar.java).
+            // Yesil rol rengi degismedi - o takimdan bagimsiz.
             assertThat(html)
-                    .contains("#003b78")   // hero ve footer laciverdi
-                    .contains("#95d05d")   // hero alt basligi
-                    .contains("#064b95")   // analiz bolum basligi
-                    .contains("#48ac35");  // gelistirme bolum basligi
+                    .contains("#0d47a1")   // hero, footer ve bolum bandi
+                    .contains("#90caf9")   // hero alt basligi
+                    .contains("#2196f3")   // sayac / JIRA / tablo baslik yazisi
+                    .contains("#48ac35");  // gelistirme bolum basligi (rol rengi)
+
+            // v2 prototipinin RPA'ya ozel tonlari artik hicbir yerde yok.
+            assertThat(html)
+                    .doesNotContain("#003b78")
+                    .doesNotContain("#064b95")
+                    .doesNotContain("#95d05d");
         }
 
         @Test
-        @DisplayName("her tema kendi renklerini üretir - motorda gizli RPA varsayımı yok")
-        void herTemaKendiRengini() {
+        @DisplayName("her tema AYNI paleti üretir, ama KENDİ görselini gösterir")
+        void herTemaOrtakPaletKendiGorseli() {
+            // Onceden bu test "her takim FARKLI renk uretir" diyordu. Tek
+            // palete gecilince o kural dustu; yerine gelen kural bu:
+            // renk ortak, AYIRT EDICILIK GORSELDE.
+            //
             // Renk sabiti YAZILMIYOR: beklenen deger temanin kendisinden
-            // okunuyor. Boylece bir takimin rengi degistiginde test degil
-            // yalnizca tema guncelleniyor.
-            String rpaHero = ThemeRegistry.tema(RpaTheme.KEY).heroBackground();
-
+            // okunuyor, boylece palet degisirse test degil tema guncellenir.
             ThemeRegistry.hepsi().forEach((anahtar, tema) -> {
                 String cikti = renderer.uret(OrnekIcerik.kapanis(), TemplateType.KAPANIS, anahtar);
 
                 assertThat(cikti)
-                        .as("%s temasi kendi hero rengini kullanmali", anahtar)
+                        .as("%s temasi ortak paleti kullanmali", anahtar)
                         .contains(tema.heroBackground())
                         .contains(tema.blue().sectionHeader());
 
-                if (!anahtar.equals(RpaTheme.KEY)) {
-                    assertThat(cikti)
-                            .as("%s temasina RPA rengi sizmamali", anahtar)
-                            .doesNotContain(rpaHero);
-                }
+                // Hero gorseli takima OZEL: kendi klasorunden gelmeli.
+                // Bu kaymasaydi butun takimlar ayni damgayi gosterirdi ve
+                // tek palete gecince maili birbirinden ayirt etmek
+                // imkansiz olurdu.
+                assertThat(tema.hero().resourcePath())
+                        .as("%s kendi hero gorselini gostermeli", anahtar)
+                        .contains("themes/" + anahtar + "/");
             });
+        }
+
+        @Test
+        @DisplayName("sekiz takımın da paleti birebir aynı")
+        void paletButunTakimlardaAyni() {
+            var rpa = ThemeRegistry.tema(RpaTheme.KEY);
+            ThemeRegistry.hepsi().forEach((anahtar, tema) -> assertThat(tema.heroBackground())
+                    .as("%s hero rengi RPA ile ayni olmali", anahtar)
+                    .isEqualTo(rpa.heroBackground()));
         }
 
         @Test

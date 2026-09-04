@@ -307,9 +307,12 @@ abstract class MailIskeleti implements MailTemplate {
                 .append("<td").append(adres("sections." + bolum.key() + ".title"))
                 .append(" style=\"height:54px;padding:0 20px;background:")
                 .append(tema.colors(bolum.tone()).sectionHeader())
-                .append(";color:#ffffff;font-family:Arial,sans-serif;font-size:18px;font-weight:900;")
+                // Yazi rengi SABIT DEGIL: acik tonlarda (pembe/sari/mor)
+                // beyaz okunmuyor, tondan geliyor (bkz. EkTonlar).
+                .append(";color:").append(tema.colors(bolum.tone()).sectionHeaderText())
+                .append(";font-family:Arial,sans-serif;font-size:18px;font-weight:900;")
                 .append("vertical-align:middle\">")
-                .append(beyaz(kacir(bolum.title())))
+                .append(renkli(kacir(bolum.title()), tema.colors(bolum.tone()).sectionHeaderText()))
                 .append("</td></tr></table>");
     }
 

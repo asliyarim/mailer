@@ -2,12 +2,8 @@
 // notes: [{ tone, text }] - ton temadaki renge çevrilir, burada renk yazılmaz.
 
 import Button from '../shared/Button.jsx'
+import { TON_SECENEKLERI } from '../../lib/mailContent.js'
 
-const TON_SECENEKLERI = [
-  { deger: 'blue', etiket: 'Mavi' },
-  { deger: 'green', etiket: 'Yeşil' },
-  { deger: 'orange', etiket: 'Turuncu' },
-]
 
 export default function NotesForm({ notes, footer, onNotesChange, onFooterChange }) {
   function notGuncelle(index, yeniNot) {

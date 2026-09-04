@@ -28,22 +28,27 @@ public final class RpaTheme {
                 KEY,
                 "RPA Takımı",
                 "#eef4f9",   // sayfa zemini
-                "#003b78",   // hero ve footer laciverdi
-                "#95d05d",   // hero alt basligi
+                "#0d47a1",   // hero ve footer laciverdi - tek palet
+                "#90caf9",   // hero alt basligi - tek palet
                 "#10233f",   // govde metni
                 "#d7e3ef",   // kutu cercevesi
                 "#d9e6f1",   // tablo hucre cizgisi
                 "#8ccc4f",   // footer ayiraci
                 "#97d35d",   // footer ilk satiri
                 new ToneColors(
-                        "#064b95",   // bolum basligi zemini
-                        "#fbfdff",   // tablo baslik zemini
-                        "#0a4c98",   // tablo baslik yazisi
-                        "#0b50a7",   // JIRA sutunu
-                        "#084a9f",   // sayac rakami
-                        "#084a9f"),  // madde isareti
+                        // v2 prototipinde #064b95 idi. BILEREK degistirildi:
+                        // bolum bandi butun takimlarda hero ile ayni renk
+                        // olsun istendi, RPA de kurala dahil.
+                        "#0d47a1",   // bolum basligi zemini = hero rengi
+                        "#ffffff",   // bolum basligi yazisi
+                        "#e3f2fd",   // tablo baslik zemini - tek palet
+                        "#2196f3",   // tablo baslik yazisi
+                        "#2196f3",   // JIRA sutunu
+                        "#2196f3",   // sayac rakami
+                        "#2196f3"),  // madde isareti
                 new ToneColors(
                         "#48ac35",
+                        "#ffffff",
                         "#f7fbf4",
                         "#328d2d",
                         "#368f31",
@@ -54,11 +59,15 @@ public final class RpaTheme {
                 // tablo basligi #db6c12).
                 new ToneColors(
                         "#db6c12",
+                        "#ffffff",
                         "#fff7ef",
                         "#b4560b",
                         "#c05e0d",
                         "#e07714",
                         "#ef7a16"),
+                EkTonlar.PEMBE,
+                EkTonlar.SARI,
+                EkTonlar.MOR,
                 new ThemeImage("hero", "themes/rpa/hero.png", 315, 235),
                 new ThemeImage("hero", "themes/rpa/hero-yonetici.png", 315, 235),
                 new ThemeImage("hero", "themes/rpa/hero-toplanti.png", 315, 235),

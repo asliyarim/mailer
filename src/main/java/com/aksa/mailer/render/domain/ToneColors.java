@@ -8,6 +8,10 @@ package com.aksa.mailer.render.domain;
  * demek; kullanicinin doldurdugu icerige dokunulmaz (Mimari Kural 4).
  *
  * @param sectionHeader        bolum basligi seridinin zemini (ANALIZ CALISMALARI)
+ * @param sectionHeaderText    o seridin YAZI rengi. Sabit beyaz DEGIL: acik
+ *                             renkli tonlarda (pembe/sari/mor) beyaz yazi
+ *                             okunmuyor - olculdu, 1.1 ile 1.9 arasi kontrast.
+ *                             Koyu zeminli tonlarda beyaz kalir.
  * @param tableHeaderBackground tablo baslik satirinin zemini
  * @param tableHeaderText      tablo baslik satirinin yazi rengi
  * @param keyText              satirin ilk sutunu (JIRA) - kalin ve renkli
@@ -16,6 +20,7 @@ package com.aksa.mailer.render.domain;
  */
 public record ToneColors(
         String sectionHeader,
+        String sectionHeaderText,
         String tableHeaderBackground,
         String tableHeaderText,
         String keyText,

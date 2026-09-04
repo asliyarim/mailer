@@ -27,14 +27,14 @@ final class KurumsalTema {
 
     /** RPA'nin yesil tonu - rol rengi, takima gore degismez. */
     private static final ToneColors YESIL = new ToneColors(
-            "#48ac35", "#f7fbf4", "#328d2d", "#368f31", "#339131", "#43a437");
+            "#48ac35", "#ffffff", "#f7fbf4", "#328d2d", "#368f31", "#339131", "#43a437");
 
     /**
      * Turuncu de rol rengi: "bekliyor / dikkat". Yesil gibi takima gore
      * degismez - bekleyen is her takimda ayni sey demek.
      */
     private static final ToneColors TURUNCU = new ToneColors(
-            "#db6c12", "#fff7ef", "#b4560b", "#c05e0d", "#e07714", "#ef7a16");
+            "#db6c12", "#ffffff", "#fff7ef", "#b4560b", "#c05e0d", "#e07714", "#ef7a16");
 
     /**
      * @param key         mail_teams.theme_key
@@ -44,8 +44,29 @@ final class KurumsalTema {
      * @param vurgu       hero alt basligi - koyu zeminde okunabilir olmali
      * @param gorselKlasoru  themes/<klasor>/ ; kendi gorselleri yoksa "rpa"
      */
+    /**
+     * Tablo baslik satirinin VARSAYILAN zemini - neredeyse beyaz.
+     * Takim rengi yalnizca YAZIYI boyuyor, zemin notr kaliyor.
+     */
+    private static final String TABLO_BASLIK_ZEMINI = "#fbfdff";
+
     static MailTheme olustur(String key, String displayName, String ana, String koyu,
                              String vurgu, String gorselKlasoru) {
+        return olustur(key, displayName, ana, koyu, vurgu, TABLO_BASLIK_ZEMINI, gorselKlasoru);
+    }
+
+    /**
+     * Tablo baslik zemini de takima ozel oldugunda kullanilir.
+     *
+     * Kurumsal paletinde ACIK bir ton bulunan takimlar icin var: notr beyaz
+     * yerine o tonu koymak tabloyu takimin paletine baglar. Paletinde boyle
+     * bir ton olmayan takimlar alti parametreli surumu kullanmaya devam eder.
+     *
+     * @param tabloBaslikZemini tablo baslik satirinin zemini - uzerine ana
+     *                          renkte yazi bindigi icin COK ACIK olmali
+     */
+    static MailTheme olustur(String key, String displayName, String ana, String koyu,
+                             String vurgu, String tabloBaslikZemini, String gorselKlasoru) {
         // HERO takima ozel: kendi renginde zemin, ustte logo bandi, altinda
         // takim damgasi (scripts/tema-gorselleri-uret.js uretiyor).
         String heroYolu = "themes/" + gorselKlasoru + "/";
@@ -64,9 +85,16 @@ final class KurumsalTema {
                 "#d9e6f1",
                 "#8ccc4f",
                 "#97d35d",
-                new ToneColors(ana, "#fbfdff", ana, ana, ana, ana),
+                // Bolum bandi HERO ile AYNI renk (koyu), ana renk degil.
+                // Yonetici istegi: mailin ust basligiyla bolum basliklari
+                // birebir ayni maviyi tasisin. Sayac/JIRA/tablo yazisi ana
+                // renkte kaliyor - onlar da koyulasinca mail donuklasiyordu.
+                new ToneColors(koyu, "#ffffff", tabloBaslikZemini, ana, ana, ana, ana),
                 YESIL,
                 TURUNCU,
+                EkTonlar.PEMBE,
+                EkTonlar.SARI,
+                EkTonlar.MOR,
                 new ThemeImage("hero", heroYolu + "hero.png", 315, 235),
                 new ThemeImage("hero", heroYolu + "hero-yonetici.png", 315, 235),
                 new ThemeImage("hero", heroYolu + "hero-toplanti.png", 315, 235),

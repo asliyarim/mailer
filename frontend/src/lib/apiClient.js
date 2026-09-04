@@ -257,6 +257,19 @@ export async function fetchDocument(id) {
   return response.json();
 }
 
+/**
+ * "Geçen sprintten devam et": kaynağın kopyasını yeni taslak olarak açar.
+ *
+ * Kopyalama SUNUCUDA yapiliyor - burada "yeni belge yarat + icerigi kaydet"
+ * diye iki istek atilsaydi, ikincisi dustugunde geriye kullanicinin
+ * silemedigi BOS bir belge kalirdi.
+ */
+export async function copyDocument(id) {
+  const response = await authFetch(`/api/mailer/documents/${id}/kopya`, jsonInit("POST", {}));
+  await ensureOk(response, "Belge kopyalanamadı.");
+  return response.json();
+}
+
 export async function createDocument({ teamId, templateType, title }) {
   const response = await authFetch("/api/mailer/documents", jsonInit("POST", { teamId, templateType, title }));
   await ensureOk(response, "Belge oluşturulamadı.");

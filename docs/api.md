@@ -185,6 +185,70 @@ Bunlar **başlangıç değeri**; kullanıcı üçünü de değiştirebilir.
 
 ---
 
+## 3c. `POST /api/mailer/documents/{id}/kopya`
+
+**"Geçen sprintten devam et".** Kaynağın içeriğiyle **yeni bir taslak** açar
+ve dönemi bir sonraki sprinte taşır. İstek gövdesi yoktur.
+
+```
+POST /api/mailer/documents/146/kopya
+```
+
+**Yanıt `201`** — §4'teki tam belge gövdesi, yeni `id` ile. `currentVersion` = 1.
+
+Yetki **kaynağın** takımı üzerinden doğrulanır; kopya aynı takımda doğduğu
+için ikinci bir kontrol yoktur. Erişilemeyen belge `403`, olmayan belge `404`.
+
+### Neden sunucuda
+
+İstemci bunu `POST /documents` + `PUT /documents/{id}` ile de yapabilirdi.
+Ama ikinci istek düşerse geriye **boş bir belge** kalır — kullanıcının
+silemediği bir çöp kayıt. Burada tek işlem: belge ya içeriğiyle doğar ya hiç
+doğmaz.
+
+### Ne taşınır, ne taşınmaz
+
+| Alan | Kopyada |
+|---|---|
+| `content` bölümleri, satırları, notları | **aynen taşınır** — kopyalamanın bütün değeri burada |
+| `content.header.period` ve `.title` | bir sonraki sprinte taşınır (aşağıda) |
+| `title` (belge adı) | numarası artırılır; artırılamazsa sonuna ` (kopya)` eklenir |
+| `subject` | **taşınmaz** — konu satırı sprinte özeldir, yanlış konuyla gönderilme riski |
+| `currentVersion` / sürüm geçmişi | taşınmaz; kopya 1. sürümden başlar |
+| `createdBy` | kopyayı çıkaran kişi, kaynağın sahibi değil |
+
+### Dönem nasıl artar
+
+Kural `DonemArtirici` sınıfında ve iki adımdır:
+
+1. **Tarih aralığı kaydırılır.** İki tarih varsa aradaki gün sayısı bir
+   sonraki aralığın uzunluğu sayılır — sprint uzunluğu kodda sabit değildir.
+   `01.09.2026 – 14.09.2026` → `15.09.2026 – 28.09.2026`
+2. **Tarihlerin dışındaki son sayı bir artırılır.** Sprint numarası oradadır.
+   `… · Sprint 42` → `… · Sprint 43`
+
+Tarihlerin **içindeki** gün/ay sayıları taramaya girmez: girseydi tek tarihli
+bir dönem (`16.09.2026 · Sprint Değerlendirme`) ay atlardı. Yıl gibi duran dört
+basamaklı sayılar (1900–2100) hiçbir zaman aday değildir — `Ağustos 2026`
+artırılsaydı belge sessizce bir sonraki yıla taşınırdı.
+
+Hiçbir kural tutmazsa metne dokunulmaz. **Yanlış dönem sessiz bir hatadır,
+eksik dönem görünür.**
+
+### Arayüzde nerede
+
+Giriş sayfasındaki "Geçen sprintten devam et" şeridi. Şerit **yalnızca `PO`
+rolüne** gösterilir: §2b ADMIN için bütün aktif takımların belgelerini döner
+ve sekiz takımın son mailleri karışık bir yığın olur; ayrıca "dönemi bir
+artır" fikri tek bir takımın sprint ritmi içinde anlamlıdır. **Uç kendisi
+role bakmaz** — kopyalama admin için de geçerli bir işlem, gizlenen yalnızca
+şerit.
+
+---
+
+
+---
+
 ## 2b. `GET /api/mailer/documents/recent`
 
 Giriş sayfasındaki **"Son Taslaklarım"**. Kullanıcının erişebildiği **bütün**

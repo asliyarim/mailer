@@ -35,7 +35,24 @@ export const TEMPLATE_LABELS = {
  * dogan yeni belgeyi validateContent "gecersiz ton" diye reddeder ve
  * kullanici belgesini kaydedemezdi.
  */
-export const TONES = ["blue", "green", "orange"];
+export const TONES = ["blue", "green", "orange", "pink", "yellow", "purple"];
+
+/**
+ * Ton seçicinin gösterdiği liste. TEK NOKTADA: daha önce SectionList ve
+ * NotesForm içinde ikiz olarak duruyordu; biri güncellenip öteki unutulunca
+ * bölüm seçicisi ile not seçicisi farklı seçenek gösterirdi.
+ *
+ * Sıra önemli: ilk üçü ROL taşıyor (takım rengi / tamamlandı / bekliyor),
+ * son üçü yalnızca görsel tercih.
+ */
+export const TON_SECENEKLERI = [
+  { deger: "blue", etiket: "Mavi" },
+  { deger: "green", etiket: "Yeşil" },
+  { deger: "orange", etiket: "Turuncu" },
+  { deger: "pink", etiket: "Pembe" },
+  { deger: "yellow", etiket: "Sarı" },
+  { deger: "purple", etiket: "Mor" },
+];
 
 /**
  * Tüm satır alanları, tek sözlük. Hangi alanın hangi mail tipinde
