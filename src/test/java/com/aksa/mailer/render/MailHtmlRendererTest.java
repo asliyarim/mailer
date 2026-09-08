@@ -1,6 +1,7 @@
 package com.aksa.mailer.render;
 
 import com.aksa.mailer.document.domain.MailContent;
+import com.aksa.mailer.document.domain.MailSection;
 import com.aksa.mailer.document.domain.TemplateType;
 import com.aksa.mailer.render.domain.ThemeRegistry;
 import com.aksa.mailer.render.template.KapanisTemplate;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -206,6 +208,57 @@ class MailHtmlRendererTest {
             String cikti = renderer.uret(cokSatirli, TemplateType.KAPANIS, RpaTheme.KEY);
 
             assertThat(cikti).contains("birinci satır<br>ikinci satır");
+        }
+
+        /**
+         * Boş bölüm kuralı (Aslı, 08.09.2026): o sprint hiç analiz çalışması
+         * olmayan bir takımın mailinde "ANALİZ ÇALIŞMALARI" bandı boş boş
+         * duruyordu. Artık dolu bölüm varsa boşlar çizilmiyor.
+         */
+        private MailContent bolumleriDegistir(List<MailSection> yeniBolumler) {
+            MailContent i = OrnekIcerik.kapanis();
+            return new MailContent(i.schemaVersion(), i.header(), i.meeting(),
+                    i.intro(), yeniBolumler, i.notes(), i.footer());
+        }
+
+        @Test
+        @DisplayName("boş bölüm mailde çizilmez - başlık bandı da sayacı da gitmeli")
+        void bosBolumCizilmez() {
+            MailContent icerik = OrnekIcerik.kapanis();
+            MailSection analiz = icerik.sections().get(0);
+            MailSection gelistirme = icerik.sections().get(1);
+
+            // Analiz bosaltiliyor, gelistirme dolu kaliyor.
+            MailContent bosAnaliz = bolumleriDegistir(List.of(
+                    new MailSection(analiz.key(), analiz.title(), analiz.tone(),
+                            analiz.columns(), List.of()),
+                    gelistirme));
+
+            String cikti = renderer.uret(bosAnaliz, TemplateType.KAPANIS, RpaTheme.KEY);
+
+            assertThat(cikti)
+                    .as("boş bölümün başlığı mailde durmamalı")
+                    .doesNotContain(analiz.title());
+            assertThat(cikti)
+                    .as("dolu bölüm etkilenmemeli")
+                    .contains(gelistirme.title());
+        }
+
+        @Test
+        @DisplayName("HİÇBİR bölüm dolu değilse iskelet gösterilir")
+        void bosTaslakIskeletiGosterir() {
+            // Yeni bir taslak acildiginda onizleme mailin seklini gostermeli;
+            // aksi halde tip secen kullanici bombos bir govde gorurdu
+            // (bkz. docs/api.md §3b, "yeni belge gecerli dogar").
+            List<MailSection> hepsiBos = OrnekIcerik.kapanis().sections().stream()
+                    .map(b -> new MailSection(b.key(), b.title(), b.tone(), b.columns(), List.<Map<String, String>>of()))
+                    .toList();
+
+            String cikti = renderer.uret(bolumleriDegistir(hepsiBos), TemplateType.KAPANIS, RpaTheme.KEY);
+
+            assertThat(cikti)
+                    .contains("ANALİZ ÇALIŞMALARI")
+                    .contains("GELİŞTİRME ÇALIŞMALARI");
         }
 
         @Test

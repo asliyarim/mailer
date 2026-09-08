@@ -10,9 +10,10 @@
 
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { fetchDocuments, fetchTeams } from '../../lib/apiClient.js'
+import { deleteDocument, fetchDocuments, fetchTeams } from '../../lib/apiClient.js'
 import { TEMPLATE_LABELS, TEMPLATE_TYPES } from '../../lib/mailContent.js'
 import Button from './Button.jsx'
+import Modal from './Modal.jsx'
 
 // Her tuşa basışta istek atmamak için bekleme (önizlemedekiyle aynı mantık).
 const ARAMA_GECIKMESI_MS = 300
@@ -41,6 +42,14 @@ export default function DocumentListPage() {
   const [arama, setArama] = useState('')
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hata, setHata] = useState(null)
+
+  /**
+   * Silme onayı. Silme GERİ ALINAMAZ olduğu için tek tıkla yapılmıyor;
+   * onay penceresi belgenin ADINI gösteriyor — "emin misiniz?" diye soran
+   * ama neyi sildiğini söylemeyen bir pencere hiçbir şey doğrulatmaz.
+   */
+  const [silinecek, setSilinecek] = useState(null)
+  const [siliniyor, setSiliniyor] = useState(false)
 
   useEffect(() => {
     fetchTeams()
@@ -83,6 +92,25 @@ export default function DocumentListPage() {
 
   const aramaVar = arama.trim().length > 0
   const seciliTakim = teams.find((t) => t.id === seciliTeamId)
+
+  async function silmeyiOnayla() {
+    if (!silinecek) return
+    setSiliniyor(true)
+    try {
+      await deleteDocument(silinecek.id)
+      // Listeyi yeniden çekmek yerine yerelde çıkarıyoruz: silinen kayıt
+      // zaten sunucuda yok, ikinci bir istek beklemek ekranı gereksiz
+      // dondurur.
+      setBelgeler((liste) => liste.filter((b) => b.id !== silinecek.id))
+      setSilinecek(null)
+      setHata(null)
+    } catch (e) {
+      setHata(e.message)
+      setSilinecek(null)
+    } finally {
+      setSiliniyor(false)
+    }
+  }
 
   return (
     <main className="sayfa">
@@ -170,6 +198,9 @@ export default function DocumentListPage() {
                   <th>Sürüm</th>
                   <th>Güncelleyen</th>
                   <th>Güncelleme</th>
+                  {/* Başlıksız sütun: içinde ne olduğu düğmenin kendisinden
+                      belli, "İşlem" yazmak gürültü olurdu. */}
+                  <th aria-label="İşlemler"></th>
                 </tr>
               </thead>
               <tbody>
@@ -194,12 +225,47 @@ export default function DocumentListPage() {
                     <td className="sayi">v{b.currentVersion}</td>
                     <td>{b.updatedBy}</td>
                     <td className="sessiz-metin">{tarihBicimle(b.updatedAt)}</td>
+                    <td className="satir-eylem">
+                      {/* stopPropagation ŞART: satırın kendisi tıklanınca
+                          editöre gidiyor. Olmasaydı "Sil" düğmesi hem onay
+                          penceresini açar hem belgeyi açardı. */}
+                      <button
+                        type="button"
+                        className="sil-dugmesi"
+                        title={`${b.title} — kalıcı olarak sil`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSilinecek(b)
+                        }}
+                      >
+                        Sil
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
+
+        <Modal
+          acik={silinecek != null}
+          baslik="Maili sil"
+          onKapat={() => (siliniyor ? null : setSilinecek(null))}
+        >
+          <p className="modal__metin">
+            <strong>{silinecek?.title}</strong> kalıcı olarak silinecek. Sürüm
+            geçmişi de gider ve <strong>geri alınamaz</strong>.
+          </p>
+          <div className="modal__eylemler">
+            <Button varyant="sessiz" onClick={() => setSilinecek(null)} disabled={siliniyor}>
+              Vazgeç
+            </Button>
+            <Button varyant="tehlike" onClick={silmeyiOnayla} disabled={siliniyor}>
+              {siliniyor ? 'Siliniyor…' : 'Sil'}
+            </Button>
+          </div>
+        </Modal>
       </div>
     </main>
   )

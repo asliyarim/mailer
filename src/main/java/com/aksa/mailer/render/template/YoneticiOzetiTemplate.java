@@ -139,7 +139,7 @@ public class YoneticiOzetiTemplate extends MailIskeleti {
 
     @Override
     protected void bolumler(StringBuilder html, MailContent content, MailTheme tema) {
-        for (MailSection bolum : content.sections()) {
+        for (MailSection bolum : gorunurBolumler(content)) {
             bolumBasligi(html, bolum, tema);
             if (bolum.rows().isEmpty() || bolum.columns().isEmpty()) {
                 continue;

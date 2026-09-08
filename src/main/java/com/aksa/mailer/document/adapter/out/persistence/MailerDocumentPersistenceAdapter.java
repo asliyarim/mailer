@@ -55,6 +55,15 @@ class MailerDocumentPersistenceAdapter implements MailerDocumentRepository, Mail
     }
 
     @Override
+    public void sil(Long id) {
+        // Surum ve indirme satirlari sema tarafinda ON DELETE CASCADE
+        // (bkz. V1__init.sql, V2__download_log_kullanici.sql) - burada elle
+        // silinmiyor. Cascade'i uygulamaya tasimak ayni kurali iki yerde
+        // tutmak olurdu ve biri unutulunca yabanci anahtar hatasi verirdi.
+        documentJpa.deleteById(id);
+    }
+
+    @Override
     public MailerDocument kaydet(MailerDocument document) {
         MailerDocumentEntity entity;
         if (document.id() == null) {

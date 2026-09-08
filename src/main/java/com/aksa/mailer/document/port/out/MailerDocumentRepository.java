@@ -17,4 +17,13 @@ public interface MailerDocumentRepository {
     Optional<MailerDocument> bul(Long id);
 
     MailerDocument kaydet(MailerDocument document);
+
+    /**
+     * Belgeyi KALICI olarak siler.
+     *
+     * Surum gecmisi ve indirme kayitlari veritabaninda ON DELETE CASCADE ile
+     * bagli; ayrica silmeye gerek yok, ama silinecekleri de bilinerek kabul
+     * ediliyor - belge gidince gecmisi de gider.
+     */
+    void sil(Long id);
 }

@@ -341,6 +341,49 @@ class MailerDocumentServiceTest {
         assertThat(versionRepo.gecmis(taslak.id())).hasSize(2);
     }
 
+    // ── Silme ─────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("silinen belge listeden ve tek tek erişimden kalkar")
+    void silmeBelgeyiKaldirir() {
+        MailerDocument taslak = yeniKapanis();
+
+        service.sil(taslak.id());
+
+        assertThatThrownBy(() -> service.getir(taslak.id())).isInstanceOf(NotFoundException.class);
+        assertThat(service.takimBelgeleri(1L, null)).isEmpty();
+        assertThat(service.sonBelgeler(List.of(1L), 10, null)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("silme yalnızca hedef belgeyi kaldırır")
+    void silmeKomsuyaDokunmaz() {
+        MailerDocument silinecek = yeniKapanis();
+        MailerDocument kalacak = service.olustur(new ManageMailerDocumentsUseCase.NewDocumentCommand(
+                1L, TemplateType.PLANLAMA, "Kalsın", SICIL));
+
+        service.sil(silinecek.id());
+
+        assertThat(service.getir(kalacak.id()).title()).isEqualTo("Kalsın");
+    }
+
+    @Test
+    @DisplayName("olmayan belge silinemez - 404, sessiz başarı değil")
+    void olmayanBelgeSilinemez() {
+        // Sessizce basarili donseydi kullanici "sildim" sanip aslinda baska
+        // bir kaydin durdugunu fark etmezdi.
+        assertThatThrownBy(() -> service.sil(9999L)).isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("silinen belge ikinci kez silinemez")
+    void ikinciSilmeHataVerir() {
+        MailerDocument taslak = yeniKapanis();
+        service.sil(taslak.id());
+
+        assertThatThrownBy(() -> service.sil(taslak.id())).isInstanceOf(NotFoundException.class);
+    }
+
     // ── "Geçen sprintten devam et" ────────────────────────────────────
 
     @Test
@@ -571,6 +614,11 @@ class MailerDocumentServiceTest {
         @Override
         public Optional<MailerDocument> bul(Long id) {
             return Optional.ofNullable(kayitlar.get(id));
+        }
+
+        @Override
+        public void sil(Long id) {
+            kayitlar.remove(id);
         }
 
         @Override

@@ -75,6 +75,9 @@ public class PlanlamaTemplate extends MailIskeleti {
     /** Durum -> konu sayisi, ilk gorunme sirasini koruyarak. Bos durumlar sayilmaz. */
     private Map<String, Integer> durumDagilimi(MailContent content) {
         Map<String, Integer> dagilim = new LinkedHashMap<>();
+        // Burada gorunurBolumler() DEGIL: bu sayim zaten satirlar uzerinden
+        // gidiyor, bos bolum hicbir sey eklemiyor. Suzmek sonucu degistirmez,
+        // yalnizca okuyani "neden burada da suzuluyor" diye dusundurur.
         for (MailSection bolum : content.sections()) {
             if (!bolum.columns().contains("status")) {
                 continue;
@@ -91,7 +94,7 @@ public class PlanlamaTemplate extends MailIskeleti {
 
     @Override
     protected void bolumler(StringBuilder html, MailContent content, MailTheme tema) {
-        for (MailSection bolum : content.sections()) {
+        for (MailSection bolum : gorunurBolumler(content)) {
             bolumBasligi(html, bolum, tema);
             if (bolum.rows().isEmpty() || bolum.columns().isEmpty()) {
                 continue;

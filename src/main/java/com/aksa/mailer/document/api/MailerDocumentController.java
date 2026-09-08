@@ -14,6 +14,7 @@ import com.aksa.mailer.team.port.in.GetTeamsUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -134,6 +135,20 @@ public class MailerDocumentController {
                 id, istek.title(), istek.subject(), istek.content(),
                 istek.expectedVersion(), authentication.getName()));
         return yanit(kaydedilen);
+    }
+
+    /**
+     * Belgeyi KALICI olarak siler (docs/api.md §5b).
+     *
+     * Arsivleme yerine gercek silme, Asli'nin karari: arsiv de zamanla
+     * birikiyor ve yanlislikla silinme riski dusuk goruluyor. Onay
+     * arayuzde aliniyor - sunucu ikinci bir onay beklemez.
+     */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void sil(@PathVariable Long id, Authentication authentication) {
+        erisilebilirBelge(id, authentication);
+        documents.sil(id);
     }
 
     /** Indirme olcumu. Govde yok, 204 doner (docs/api.md §10). */

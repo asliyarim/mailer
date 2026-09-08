@@ -607,6 +607,50 @@ kontrol "gecersiz indirme bicimi reddedilir" 400 \
   "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
       -d '{"format":"DOCX"}' "$TABAN/api/mailer/documents/$ID/downloads")"
 
+# ── Kopyalama ve silme (docs/api.md §3c, §5b) ────────────────────────────
+#
+# Ikisi de VERI DEGISTIREN uclar; birlikte test ediliyorlar cunku silme,
+# kopyalamanin yarattigi belgeyi temizliyor - duman testi arkasinda cop
+# birakmasin.
+
+KOPYA="$(curl -s -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+          "$TABAN/api/mailer/documents/$ID/kopya")"
+KOPYA_ID="$(printf '%s' "$KOPYA" | alan id)"
+
+kontrol "kopya olusuyor" "var" \
+  "$([[ -n "$KOPYA_ID" && "$KOPYA_ID" != "null" ]] && echo var || echo yok)"
+# Kopya YENI bir taslak: kaynagin surumunu ve gecmisini devralmaz.
+kontrol "kopya 1. surumden baslar" 1 "$(printf '%s' "$KOPYA" | alan currentVersion)"
+# Konu satiri sprinte ozel - tasinsaydi yanlis konuyla gonderilebilirdi.
+kontrol "kopyada konu satiri bos" "null" "$(printf '%s' "$KOPYA" | alan subject)"
+kontrol "kopya kaynaktan FARKLI bir belge" "farkli" \
+  "$([[ "$KOPYA_ID" != "$ID" ]] && echo farkli || echo ayni)"
+
+kontrol "olmayan belge kopyalanamaz" 404 \
+  "$(kod -X POST -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+      "$TABAN/api/mailer/documents/999999/kopya")"
+kontrol "yetkisiz takimin belgesi kopyalanamaz" 403 \
+  "$(kod -X POST -b "$BASKA; XSRF-TOKEN=$CSRF" -H "X-CSRF-Token: $CSRF" \
+      "$TABAN/api/mailer/documents/$ID/kopya")"
+
+kontrol "yetkisiz takimin belgesi silinemez" 403 \
+  "$(kod -X DELETE -b "$BASKA; XSRF-TOKEN=$CSRF" -H "X-CSRF-Token: $CSRF" \
+      "$TABAN/api/mailer/documents/$ID")"
+kontrol "olmayan belge silinemez" 404 \
+  "$(kod -X DELETE -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+      "$TABAN/api/mailer/documents/999999")"
+
+kontrol "kopya silinir" 204 \
+  "$(kod -X DELETE -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+      "$TABAN/api/mailer/documents/$KOPYA_ID")"
+# Silinen belge GERCEKTEN gitmis olmali - 204 donup kaydi birakmak
+# kullaniciya "sildim" dedirtip listeyi doldurmaya devam ederdi.
+kontrol "silinen belge artik yok" 404 \
+  "$(kod -b "$CEREZ" "$TABAN/api/mailer/documents/$KOPYA_ID")"
+kontrol "silinen belge ikinci kez silinemez" 404 \
+  "$(kod -X DELETE -b "$CEREZ" -H "X-CSRF-Token: $CSRF" \
+      "$TABAN/api/mailer/documents/$KOPYA_ID")"
+
 echo
 echo "gecti: $gecti   kaldi: $kaldi   (belge id: $ID)"
 [[ "$kaldi" -eq 0 ]]

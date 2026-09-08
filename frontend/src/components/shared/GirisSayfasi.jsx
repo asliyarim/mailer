@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom'
 import { copyDocument, fetchRecentDocuments } from '../../lib/apiClient.js'
 import { TEMPLATE_LABELS, TEMPLATE_TYPES } from '../../lib/mailContent.js'
 import Button from './Button.jsx'
+import SablonOnizleme from './SablonOnizleme.jsx'
 
 /**
  * "Geçen sprintten devam et" şeridi YALNIZCA PO'lara gösterilir.
@@ -28,8 +29,29 @@ import Button from './Button.jsx'
  */
 const SERIT_ROLU = 'PO'
 
-/** Şeritte kaç mail görünsün - şablon kartlarıyla aynı sayı, aynı ızgara. */
-const SERIT_ADEDI = 4
+/**
+ * Şeritte HER TİPTEN YALNIZCA EN YENİSİ görünür.
+ *
+ * Önce "en son güncellenen 4 mail" gösteriliyordu ve tip önemsizdi; art arda
+ * iki Yönetici Özeti hazırlayan biri şeritte iki Yönetici Özeti görüyor,
+ * Sprint Kapanışı ise listeden düşüyordu. Oysa devam edilecek şey TİPTİR:
+ * "geçen Kapanış'tan devam et", "geçen Planlama'dan devam et".
+ *
+ * Böylece şerit üstteki dört şablon kartıyla birebir eşleşiyor ve en fazla
+ * dört satır oluyor.
+ */
+
+/**
+ * Sunucudan çekilen mail sayısı - içinden her tipin en yenisi seçilecek.
+ *
+ * Neden 4 değil: 4 istenseydi ve son dört mail de aynı tipten olsaydı,
+ * eleme sonrası şeritte tek satır kalırdı. 20, bir PO'nun yakın geçmişinde
+ * dört tipin de bulunmasına fazlasıyla yeter.
+ *
+ * Bu sınır aynı zamanda DOĞRU olan: son Toplantı Notları bir yıl öncesindeyse
+ * onu "geçen sprintten devam et" diye önermek zaten yanlış olurdu.
+ */
+const CEKILEN_ADET = 20
 
 /**
  * "2 saat önce". Tam tarih başlık (title) olarak duruyor - göreli zaman
@@ -60,6 +82,22 @@ function goreliZaman(isoTarih) {
   }
 
   return `${Math.floor(deger)} ${birim} önce`
+}
+
+/**
+ * Her tipten en yenisini seçer, sıra bozulmadan.
+ *
+ * Liste sunucudan zaten "en yeni önce" geliyor; ilk karşılaşılan kayıt o
+ * tipin en yenisidir. Yeniden sıralamıyoruz - şeridin sırası "en son neye
+ * dokundun" olarak kalsın.
+ */
+function tipBasinaEnYeni(belgeler) {
+  const gorulen = new Set()
+  return belgeler.filter((b) => {
+    if (gorulen.has(b.templateType)) return false
+    gorulen.add(b.templateType)
+    return true
+  })
 }
 
 function tamTarih(isoTarih) {
@@ -115,9 +153,9 @@ export default function GirisSayfasi({ user }) {
     if (!seritGoster) return undefined
 
     let iptal = false
-    fetchRecentDocuments(SERIT_ADEDI)
+    fetchRecentDocuments(CEKILEN_ADET)
       .then((liste) => {
-        if (!iptal) setSonMailler(liste)
+        if (!iptal) setSonMailler(tipBasinaEnYeni(liste))
       })
       // Şerit bir KOLAYLIK; alınamazsa sayfanın asıl işi (şablon seçimi)
       // etkilenmesin. Hata sessizce yutulmuyor ama ekranı da kaplamıyor.
@@ -166,6 +204,9 @@ export default function GirisSayfasi({ user }) {
               <span className="tip-karti__ton" aria-hidden="true" />
               <span className="tip-karti__ad">{TEMPLATE_LABELS[t.tip]}</span>
               <span className="tip-karti__aciklama">{t.aciklama}</span>
+              {/* Mailin şekli - hangi tipin ne ürettiği yazıdan önce
+                  buradan anlaşılsın. */}
+              <SablonOnizleme tip={t.tip} />
               <span className="tip-karti__icerik">{t.icerik}</span>
               <span className="tip-karti__eylem">Başla →</span>
             </button>
@@ -180,8 +221,8 @@ export default function GirisSayfasi({ user }) {
             <div className="devam__ust">
               <h2 className="devam__baslik">Geçen sprintten devam et</h2>
               <p className="devam__alt">
-                Kopya yeni bir taslak olarak açılır, dönem numarası bir artar.
-                Kaynak mail olduğu gibi kalır.
+                Her tipin en son maili. Kopya yeni bir taslak olarak açılır,
+                dönem numarası bir artar; kaynak mail olduğu gibi kalır.
               </p>
             </div>
 

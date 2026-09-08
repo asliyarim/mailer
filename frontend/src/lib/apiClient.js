@@ -270,6 +270,21 @@ export async function copyDocument(id) {
   return response.json();
 }
 
+/**
+ * Belgeyi KALICI olarak siler. Onay ARAYUZDE alinir - bu fonksiyon
+ * cagrildiginda kullanici zaten onaylamis sayilir.
+ */
+export async function deleteDocument(id) {
+  // buildInit FONKSIYON verilir: 401 sonrasi tekrar denemede X-CSRF-Token
+  // taze cerezden yeniden okunsun (bkz. authFetch).
+  const response = await authFetch(`/api/mailer/documents/${id}`, () => ({
+    method: "DELETE",
+    credentials: "include",
+    headers: csrfHeaders(),
+  }));
+  await ensureOk(response, "Belge silinemedi.");
+}
+
 export async function createDocument({ teamId, templateType, title }) {
   const response = await authFetch("/api/mailer/documents", jsonInit("POST", { teamId, templateType, title }));
   await ensureOk(response, "Belge oluşturulamadı.");

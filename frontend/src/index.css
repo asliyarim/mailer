@@ -1229,21 +1229,35 @@ textarea::placeholder {
   color: var(--lacivert);
 }
 
+/* Aciklama metinleri 2 ile 3 satir arasinda degisiyor; yukseklik serbest
+   birakilinca altindaki cizim ve "Basla" her kartta baska hizaya dusuyordu.
+   Uc satirlik yer AYRILIYOR: 3 x 1.55em. Iki satirlik metinde altta bir
+   satirlik bosluk kaliyor - bedeli bu, karsiligi dort kartin hizali
+   durmasi. */
 .tip-karti__aciklama {
   font-size: 13px;
   line-height: 1.55;
   color: var(--murekkep-orta);
+  min-height: calc(3 * 1.55em);
 }
 
+/* Bu satir da tasabiliyor ("Sayaclar - Kararlar - Aksiyonlar -
+   Baglantilar" iki satir). Iki satirlik yer ayirmak yeterli. */
 .tip-karti__icerik {
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.03em;
   color: var(--soluk);
+  min-height: calc(2 * 1.4em);
+  line-height: 1.4;
 }
 
+/* margin-top: auto -> "Basla" HER KARTTA en altta. Ust kisimda kalan
+   fark ne olursa olsun dort baglanti ayni hizada duruyor. Kartlar zaten
+   izgarada esit yuksekliktedir (grid stretch). */
 .tip-karti__eylem {
-  margin-top: 4px;
+  margin-top: auto;
+  padding-top: 4px;
   font-size: 13px;
   font-weight: 700;
   color: var(--mavi);
@@ -1663,4 +1677,91 @@ textarea::placeholder {
   .devam__ad { grid-column: 1 / -1; white-space: normal; }
   .devam__donem { padding-left: 0; border-left: 0; }
   .devam__eylem { grid-column: 2; justify-self: end; }
+}
+
+/* ══ Silme: liste satırındaki düğme ve onay penceresi ══════════════════
+ *
+ * Silme GERİ ALINAMAZ, ama günlük bir işlem de değil. Bu yüzden düğme
+ * satırda SESSİZ duruyor (gri, çerçevesiz) ve ancak satırın üstüne
+ * gelindiğinde kırmızıya dönüyor. Sürekli kırmızı bir "Sil" sütunu,
+ * listeyi tehlikeli bir yer gibi gösterirdi.
+ */
+.liste-tablo td.satir-eylem {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.sil-dugmesi {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--soluk);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.liste-tablo tr:hover .sil-dugmesi {
+  color: var(--hata);
+  border-color: var(--hata-cizgi);
+}
+
+.sil-dugmesi:hover,
+.sil-dugmesi:focus-visible {
+  color: var(--hata);
+  background: var(--hata-zemin);
+  border-color: var(--hata-cizgi);
+}
+
+.modal__metin {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--murekkep-orta);
+}
+
+.modal__eylemler {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ══ Şablon kartındaki mail çizimi ═════════════════════════════════════
+ *
+ * Açıklama metniyle "içerik" satırı arasında duruyor: önce ne işe yaradığı
+ * yazıyla, sonra neye benzediği görselle. Kartın kenarlarına yaslanmıyor -
+ * bir mail gövdesi gibi çerçeveli, altında gölgesiyle.
+ *
+ * Yükseklik SABIT: dört kart aynı hizada dursun. Çizimin altı taşarsa
+ * kırpılıyor (preserveAspectRatio="slice") - mail zaten aşağı doğru
+ * devam eden bir şey, kırpılmış görünmesi doğru.
+ */
+.tip-karti__onizleme {
+  display: block;
+  width: 100%;
+  /* viewBox orani (200x98) ile ayni orani tutuyor: 230x112. Tutmadigi
+     ilk surumde cizimin alti kirpiliyordu. */
+  height: 112px;
+  margin: 4px 0 2px;
+  border: 1px solid var(--cizgi);
+  border-radius: 7px;
+  background: var(--panel);
+  box-shadow: 0 2px 8px rgba(15, 42, 78, 0.07);
+  /* Kart zaten tıklanabilir; çizim fareyi yakalamasın. */
+  pointer-events: none;
+  transition: box-shadow 0.14s, border-color 0.14s;
+}
+
+.tip-karti:hover .tip-karti__onizleme {
+  border-color: var(--mavi-cizgi);
+  box-shadow: 0 4px 14px rgba(15, 42, 78, 0.13);
+}
+
+/* Dar ekranda kartlar iki sütuna düşüyor ve genişliyor - çizim de
+   büyüsün, ince bir şerit gibi kalmasın. */
+@media (max-width: 1000px) {
+  .tip-karti__onizleme { height: 132px; }
 }

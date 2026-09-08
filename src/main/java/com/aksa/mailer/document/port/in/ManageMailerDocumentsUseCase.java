@@ -68,6 +68,15 @@ public interface ManageMailerDocumentsUseCase {
 
     MailerDocument kaydet(SaveDocumentCommand komut);
 
+    /**
+     * Belgeyi KALICI olarak siler. Geri alinamaz.
+     *
+     * Surum gecmisi ve indirme olcumu de gider - belge yoksa gecmisinin
+     * kimseye faydasi yok. Yetki kontrolu, diger belge uclarindaki gibi
+     * api/ katmanindaki erisilebilirBelge() ile yapilir.
+     */
+    void sil(Long id);
+
     List<VersionSummary> versiyonlar(Long documentId);
 
     MailerDocument geriAl(Long documentId, int version, String sicil);

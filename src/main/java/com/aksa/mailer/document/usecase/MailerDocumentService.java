@@ -231,6 +231,16 @@ public class MailerDocumentService implements ManageMailerDocumentsUseCase {
      */
     @Override
     @Transactional
+    public void sil(Long id) {
+        // Once getir: olmayan belge icin sessizce basarili donmek yerine 404.
+        // Kullanici "sildim" sanip aslinda baska bir kaydin durdugunu
+        // fark etmesin diye.
+        getir(id);
+        documentRepository.sil(id);
+    }
+
+    @Override
+    @Transactional
     public MailerDocument kopyala(Long kaynakId, String sicil) {
         MailerDocument kaynak = getir(kaynakId);
 

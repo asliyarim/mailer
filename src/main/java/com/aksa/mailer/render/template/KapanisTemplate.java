@@ -32,7 +32,7 @@ public class KapanisTemplate extends MailIskeleti {
 
     @Override
     protected void bolumler(StringBuilder html, MailContent content, MailTheme tema) {
-        for (MailSection bolum : content.sections()) {
+        for (MailSection bolum : gorunurBolumler(content)) {
             bolumBasligi(html, bolum, tema);
             bolumTablosu(html, bolum, tema);
         }

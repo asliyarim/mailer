@@ -383,6 +383,35 @@ Kaydet. **Her kayıt yeni bir versiyon satırı yazar.**
 
 ---
 
+## 5b. `DELETE /api/mailer/documents/{id}`
+
+Belgeyi **kalıcı olarak** siler. İstek gövdesi yoktur.
+
+**Yanıt `204`** — gövde yok. Erişilemeyen belge `403`, olmayan belge `404`.
+
+Olmayan belge için sessizce `204` dönülmez: kullanıcı "sildim" sanıp
+aslında başka bir kaydın durduğunu fark etmemeli.
+
+### Ne gider
+
+Belgenin kendisi, **sürüm geçmişi** ve **indirme ölçümü**. Son ikisi şema
+tarafında `ON DELETE CASCADE` ile bağlı (`mailer_document_versions`,
+`mailer_download_logs`); uygulama bunları ayrıca silmez. Aynı kuralı iki
+yerde tutmak, biri unutulduğunda yabancı anahtar hatası demek olurdu.
+
+### Neden arşivleme değil
+
+Önce arşivleme (geri alınabilir gizleme) önerilmişti. Karar silme yönünde
+oldu: arşiv de zamanla birikiyor ve listeyi yine dolduruyor, yanlışlıkla
+silme riski ise düşük görülüyor.
+
+Onay **arayüzde** alınıyor — silinecek belgenin adını gösteren bir pencere
+ile. Sunucu ikinci bir onay beklemez; "emin misin" sorusunu iki katmanda
+sormak, ikisini de zamanla anlamsızlaştırır.
+
+
+---
+
 ## 6. `GET /api/mailer/documents/{id}/versions`
 
 Versiyon geçmişi — `content` dönmez, liste hafif kalsın.

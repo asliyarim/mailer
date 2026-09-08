@@ -165,11 +165,43 @@ abstract class MailIskeleti implements MailTemplate {
     protected abstract void bolumler(StringBuilder html, MailContent content, MailTheme tema);
 
     /**
+     * Mailde ÇİZİLECEK bölümler.
+     *
+     * SORUN: bölüm başlığı her zaman çiziliyordu, tablo ise satır yoksa
+     * atlanıyordu. Sonuç: o sprint hiçbir analiz çalışması olmayan bir takımın
+     * mailinde "ANALİZ ÇALIŞMALARI" bandı boş boş duruyordu - alıcı için
+     * anlamsız, gönderen için utanç verici.
+     *
+     * KURAL: dolu bölüm varsa yalnızca dolular çizilir. Hiçbiri dolu değilse
+     * HEPSİ çizilir.
+     *
+     * İkinci cümle bilerek: yeni bir taslak açıldığında sağdaki önizleme
+     * mailin İSKELETINI göstermeli - kullanıcı tipi seçer seçmez "bu mail
+     * neye benziyor" sorusunun cevabını orada görüyor (bkz. docs/api.md §3b).
+     * Boş bölümleri koşulsuz gizleseydik yeni mail bomboş bir gövdeyle
+     * açılırdı. İlk satır girildiği anda iskelet görevini tamamlıyor ve boş
+     * bölümler çekiliyor.
+     *
+     * Satır eklemek için bölümün mailde görünmesi ŞART DEĞİL: bölüm ekleme,
+     * silme ve satır girme editörün sol panelinde (SectionList).
+     */
+    protected static List<MailSection> gorunurBolumler(MailContent content) {
+        List<MailSection> dolular = content.sections().stream()
+                .filter(bolum -> !bolum.rows().isEmpty())
+                .toList();
+        return dolular.isEmpty() ? content.sections() : dolular;
+    }
+
+    /**
      * Sayac kutulari. Varsayilan: toplam + her bolum icin bir tane.
      * Tip farkli sayaclar istiyorsa ezer.
      */
     protected void sayaclar(StringBuilder html, MailContent content, MailTheme tema) {
-        List<MailSection> bolumler = content.sections();
+        // Sayaclar GOVDEYI takip eder: gizlenen bolumun sayaci da gizlenir.
+        // Yoksa mailde "ANALIZ CALISMALARI 0" yazan bir kutu durur ama
+        // asagida o bolum hic yoktur - okuyan haklı olarak eksik bir sey
+        // oldugunu dusunur.
+        List<MailSection> bolumler = gorunurBolumler(content);
         if (bolumler.isEmpty()) {
             return;
         }
